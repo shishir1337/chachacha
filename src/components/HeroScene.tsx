@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
-import { Heart, KeyRound } from "lucide-react";
+import { Heart, LampFloor } from "lucide-react";
 import { allProducts } from "@/lib/content";
 import { coverIcons } from "@/lib/icons";
 
@@ -173,6 +173,45 @@ function boatPath(g: G, top: number, x0: number, x1: number, A: number, lam: num
   for (let x = bx + (bow - 0.04 * L) * c + 6; x <= x1; x += 6) pts.push(`L${u(x, water(x))}`);
   pts.push(`L${u(x1, water(x1))}`);
   return pts.join(" ");
+}
+
+/**
+ * A sofa seen from the front, drawn in the roof's line. It sits on the tops of the letters.
+ * Built in pixels, mapped to roof units.
+ */
+function sofaPath(g: G, cx: number, top: number, SW: number, SH: number) {
+  const u = (px: number, py: number) => `${(((px - g.roofLeft) / g.roofW) * 800).toFixed(1)} ${g.toUnitY(py).toFixed(1)}`;
+  const X = (f: number) => cx + (f - 0.5) * SW;
+  const Y = (f: number) => top - f * SH;
+  return [
+    // left leg, up the outside of the left arm, over its rounded top, down to the seat
+    `M${u(X(0.07), Y(0))}`,
+    `L${u(X(0.07), Y(0.1))}`,
+    `L${u(X(0.0), Y(0.12))}`,
+    `L${u(X(0.0), Y(0.56))}`,
+    `C${u(X(0.0), Y(0.7))} ${u(X(0.13), Y(0.7))} ${u(X(0.13), Y(0.56))}`,
+    `L${u(X(0.13), Y(0.4))}`,
+    // up the backrest, soft corners, across and down the other side
+    `L${u(X(0.13), Y(0.86))}`,
+    `C${u(X(0.13), Y(1.0))} ${u(X(0.2), Y(1.0))} ${u(X(0.3), Y(1.0))}`,
+    `L${u(X(0.7), Y(1.0))}`,
+    `C${u(X(0.8), Y(1.0))} ${u(X(0.87), Y(1.0))} ${u(X(0.87), Y(0.86))}`,
+    `L${u(X(0.87), Y(0.4))}`,
+    // right arm and leg
+    `L${u(X(0.87), Y(0.56))}`,
+    `C${u(X(0.87), Y(0.7))} ${u(X(1.0), Y(0.7))} ${u(X(1.0), Y(0.56))}`,
+    `L${u(X(1.0), Y(0.12))}`,
+    `L${u(X(0.93), Y(0.1))}`,
+    `L${u(X(0.93), Y(0))}`,
+    // base of the sofa, back across to the left arm
+    `M${u(X(0.07), Y(0.1))}`,
+    `L${u(X(0.93), Y(0.1))}`,
+    // seat front, split into two cushions
+    `M${u(X(0.13), Y(0.4))}`,
+    `L${u(X(0.87), Y(0.4))}`,
+    `M${u(X(0.5), Y(0.4))}`,
+    `L${u(X(0.5), Y(0.12))}`,
+  ].join(" ");
 }
 
 /** Height of the canopy (in roof units) at x, for rain to land on. */
@@ -394,16 +433,53 @@ const builds: Record<string, Build> = {
   },
 
   "renters-insurance": (tl, q, g, w) => {
-    const key = q(".s-key")[0];
-    const at = { x: g.peak.x - 20, y: g.peak.y + Math.max(14, g.roofH * 0.3) };
-    gsap.set(key, { x: at.x, y: at.y - 120, rotation: -120, opacity: 0, transformOrigin: "30% 30%" });
-    gsap.set(q(".s-ring"), { x: at.x - 10, y: at.y - 10 });
-    tl.to(key, { y: at.y, rotation: -20, opacity: 1, duration: 0.9, ease: "back.out(1.4)" })
-      .to(key, { rotation: 70, duration: 0.35, ease: "power3.in" }, "+=0.15")
-      .fromTo(q(".s-ring"), { scale: 0.3, opacity: 0.7 }, { scale: 2.2, opacity: 0, duration: 0.8, ease: "power2.out" })
-      .to(key, { rotation: 60, duration: 0.2, ease: "power1.out" }, "<");
-    beat(tl, w, 1.5);
-    fadeAll(tl, q, 2.6);
+    const roof = q(".__roof")[0] as SVGPathElement;
+    const home = roof.getAttribute("d")!;
+    const stage = roof.ownerSVGElement!.parentElement!;
+    const sr = stage.getBoundingClientRect();
+    const mid = w.els[1];
+    const fs = parseFloat(getComputedStyle(mid).fontSize);
+    const top = mid.getBoundingClientRect().top - sr.top + fs * 0.18; // tops of the letters
+    const cx = w.cx[1];
+    const SW = fs * 1.7;
+    const SH = fs * 0.42;
+    const sofa = sofaPath(g, cx, top, SW, SH);
+
+    // Lamp to the right of the sofa, cushion dropping onto the left seat.
+    const lamp = q(".s-lamp")[0] as HTMLElement;
+    const glow = q(".s-glow")[0] as HTMLElement;
+    const cushion = q(".s-cushion")[0] as HTMLElement;
+    const copy = q(".s-sofa path")[0] as SVGPathElement;
+    const lampH = fs * 0.48;
+    const lampX = cx + SW / 2 + fs * 0.12;
+    gsap.set(lamp, { width: lampH, height: lampH, x: lampX, y: top - lampH, opacity: 0, scale: 0.6, transformOrigin: "50% 100%" });
+    gsap.set(glow, { width: fs * 0.9, height: fs * 0.9, x: lampX + lampH / 2 - fs * 0.45, y: top - lampH - fs * 0.3, opacity: 0 });
+    const cw = fs * 0.34;
+    const ch = fs * 0.2;
+    const seatY = top - 0.4 * SH;
+    gsap.set(cushion, { width: cw, height: ch, x: cx - SW * 0.2 - cw / 2, y: seatY - ch - fs * 0.5, opacity: 0, rotation: -18 });
+    copy.setAttribute("d", sofa);
+
+    // 1. The roof melts down into a sofa sitting on the words.
+    tl.to(roof, { morphSVG: sofa, duration: 0.9, ease: "power3.inOut" }, 0.05)
+      .to(w.els, { scaleY: 0.96, duration: 0.14, ease: "power2.out", transformOrigin: "50% 100%" }, 0.85)
+      .to(w.els, { scaleY: 1, duration: 0.6, ease: "elastic.out(1, 0.5)" }, 0.99)
+      // 2. A cushion plops onto the seat.
+      .to(cushion, { opacity: 1, duration: 0.15 }, 1.15)
+      .to(cushion, { y: seatY - ch, rotation: 6, duration: 0.45, ease: "bounce.out" }, 1.15)
+      .to(cushion, { rotation: 0, duration: 0.3 }, 1.6)
+      // 3. The lamp appears and clicks on.
+      .to(lamp, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, 1.4)
+      .to(lamp, { rotation: -4, duration: 0.08, yoyo: true, repeat: 1 }, 1.95)
+      .to(glow, { opacity: 1, duration: 0.5, ease: "power2.out" }, 2.0)
+      // 4. The roof lifts back up and settles over it all: your things, sheltered.
+      .set(copy, { opacity: 1 }, 2.8)
+      .to(roof, { morphSVG: home, duration: 0.95, ease: "power3.inOut" }, 2.8)
+      // lifted a touch so it sits over the sofa and lamp rather than through them
+      .to(roof.ownerSVGElement!, { y: -fs * 0.16, duration: 0.95, ease: "power3.inOut" }, 2.8)
+      // 5. And the room fades out.
+      .to([copy, cushion, lamp, glow], { opacity: 0, duration: 0.6, ease: "power1.inOut" }, 4.5)
+      .to(roof.ownerSVGElement!, { y: 0, duration: 0.7, ease: "power2.inOut", clearProps: "transform" }, 4.7);
   },
 
   "condo-insurance": (tl, q, g, w) => {
@@ -672,10 +748,29 @@ function Markup({ kind }: { kind: string }) {
     case "renters-insurance":
       return (
         <>
-          <span className="sc s-ring absolute top-0 left-0 z-20 size-14 rounded-full border border-teal" />
-          <div className="sc s-key absolute top-0 left-0 z-20">
-            <KeyRound className={iconClass} strokeWidth={1.5} />
-          </div>
+          <svg
+            className="sc s-sofa absolute -top-[4%] left-[1%] h-[26%] w-[97%] overflow-visible"
+            viewBox="0 0 800 120"
+            preserveAspectRatio="none"
+            fill="none"
+          >
+            <path
+              stroke="#d0142c"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+              className="[stroke-width:var(--roof-w)]"
+              style={{ opacity: 0 }}
+            />
+          </svg>
+          <span
+            className="sc s-glow absolute top-0 left-0 z-10 rounded-full"
+            style={{ opacity: 0, background: "radial-gradient(circle, rgb(255 205 130 / 0.55), rgb(255 205 130 / 0) 70%)" }}
+          />
+          <span className="sc s-lamp absolute top-0 left-0 z-20" style={{ opacity: 0 }}>
+            <LampFloor className="size-full text-red" strokeWidth={1.6} />
+          </span>
+          <span className="sc s-cushion absolute top-0 left-0 z-20 rounded-[35%] bg-red" style={{ opacity: 0 }} />
         </>
       );
     case "condo-insurance":
@@ -777,7 +872,7 @@ export default function HeroScene({ kind, delay = 0 }: { kind: string; delay?: n
       const roofPath = stageEl.querySelector<SVGPathElement>(".hero-roof path");
       const local = gsap.utils.selector(root);
       const q = ((sel: string) => (sel === ".__roof" ? (roofPath ? [roofPath] : []) : local(sel))) as unknown as Q;
-      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance", "auto-insurance", "boat-insurance"].includes(kind);
+      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance", "auto-insurance", "boat-insurance", "renters-insurance"].includes(kind);
       gsap.set(q(".sc"), { opacity: 1 });
       const stage = root.current!.parentElement!;
       const sr = stage.getBoundingClientRect();
