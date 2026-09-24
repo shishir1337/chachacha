@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
-import { Car, Heart, KeyRound, PawPrint, Sailboat } from "lucide-react";
+import { Car, Heart, KeyRound, Sailboat } from "lucide-react";
 import { allProducts } from "@/lib/content";
 import { coverIcons } from "@/lib/icons";
 
@@ -55,6 +55,47 @@ function pathYAt(d: string, x: number) {
     if (Math.abs(pt.x - x) < Math.abs(best.x - x)) best = pt;
   }
   return best.y;
+}
+
+/**
+ * A dog peeking over the words, drawn as one line like the roof.
+ * Built in pixels (so the head stays round), then mapped into roof units.
+ * rise: 0 = hidden behind the letters, 1 = fully up. pawLift and earTilt animate the pose.
+ */
+function dogPath(g: G, cx: number, top: number, r: number, rise: number, pawLift = 0, earFlap = 0) {
+  const u = (x: number, y: number) => `${(((x - g.roofLeft) / g.roofW) * 800).toFixed(1)} ${g.toUnitY(y).toFixed(1)}`;
+  const h = (k: number) => top - k * r * rise; // height above the letters, scaled by how far up the dog is
+  // A paw: two little toe bumps resting on the letters.
+  const paw = (from: number, to: number) => {
+    const mid = (from + to) / 2;
+    const k = 0.28 + 0.2 * pawLift;
+    return [
+      `C${u(from, h(k))} ${u(mid, h(k))} ${u(mid, h(0.02))}`,
+      `C${u(mid, h(k))} ${u(to, h(k))} ${u(to, top)}`,
+    ].join(" ");
+  };
+  const e = earFlap * 0.12;
+  return [
+    `M${u(cx - 1.32 * r, top)}`,
+    paw(cx - 1.32 * r, cx - 0.8 * r),
+    `L${u(cx - 0.72 * r, top)}`,
+    // left side of the face up to where the ear hangs
+    `C${u(cx - 0.8 * r, h(0.45))} ${u(cx - 0.78 * r, h(0.85))} ${u(cx - 0.66 * r, h(1.12))}`,
+    // left floppy ear: out and down to the tip, then back up to the top of the head
+    `C${u(cx - (0.86 + e) * r, h(1.3))} ${u(cx - (1.16 + e) * r, h(1.12))} ${u(cx - (1.14 + e) * r, h(0.62 - e))}`,
+    `C${u(cx - (1.13 + e) * r, h(0.38 - e))} ${u(cx - (0.92 + e) * r, h(0.36 - e))} ${u(cx - 0.88 * r, h(0.6))}`,
+    `C${u(cx - 0.84 * r, h(0.95))} ${u(cx - 0.74 * r, h(1.3))} ${u(cx - 0.46 * r, h(1.42))}`,
+    // top of the head
+    `C${u(cx - 0.18 * r, h(1.56))} ${u(cx + 0.18 * r, h(1.56))} ${u(cx + 0.46 * r, h(1.42))}`,
+    // right floppy ear, mirrored
+    `C${u(cx + 0.74 * r, h(1.3))} ${u(cx + 0.84 * r, h(0.95))} ${u(cx + 0.88 * r, h(0.6))}`,
+    `C${u(cx + (0.92 + e) * r, h(0.36 - e))} ${u(cx + (1.13 + e) * r, h(0.38 - e))} ${u(cx + (1.14 + e) * r, h(0.62 - e))}`,
+    `C${u(cx + (1.16 + e) * r, h(1.12))} ${u(cx + (0.86 + e) * r, h(1.3))} ${u(cx + 0.66 * r, h(1.12))}`,
+    // right side of the face back down
+    `C${u(cx + 0.78 * r, h(0.85))} ${u(cx + 0.8 * r, h(0.45))} ${u(cx + 0.72 * r, top)}`,
+    `L${u(cx + 0.8 * r, top)}`,
+    paw(cx + 0.8 * r, cx + 1.32 * r),
+  ].join(" ");
 }
 
 /** Height of the canopy (in roof units) at x, for rain to land on. */
@@ -117,19 +158,42 @@ const builds: Record<string, Build> = {
   },
 
   "pet-insurance": (tl, q, g, w) => {
-    // A trail of paw prints trots across under the words, left, right, left.
-    const paws = q(".s-paw");
-    const n = paws.length;
-    const y0 = g.H - g.lane * 0.62;
-    paws.forEach((el, i) => {
-      const x = g.roofLeft + ((g.roofW - 30) * (i + 0.5)) / n;
-      gsap.set(el, { x, y: y0 + (i % 2 ? 9 : -9), rotation: 90 });
-    });
-    const dur = 2.2;
-    tl.fromTo(paws, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.22, stagger: dur / n, ease: "back.out(3)" }, 0.2)
-      .to(paws, { opacity: 0, duration: 0.5, stagger: dur / n }, 1.0);
-    passBumps(tl, w, g.roofLeft, g.roofLeft + g.roofW, 0.2, dur, -7);
-    fadeAll(tl, q, 3.3);
+    const roof = q(".__roof")[0] as SVGPathElement;
+    const home = roof.getAttribute("d")!;
+    const stage = roof.ownerSVGElement!.parentElement!;
+    const sr = stage.getBoundingClientRect();
+    const mid = w.els[1];
+    const mr = mid.getBoundingClientRect();
+    const fs = parseFloat(getComputedStyle(mid).fontSize);
+    // The dog sits behind the middle "Cha", paws on the tops of the letters.
+    const top = mr.top - sr.top + fs * 0.12;
+    const cx = mr.left - sr.left + mr.width * 0.42;
+    const r = fs * 0.36;
+    const pose = (rise: number, paw = 0, ear = 0) => dogPath(g, cx, top, r, rise, paw, ear);
+
+    const face = q(".s-face")[0] as HTMLElement;
+    gsap.set(face, { x: cx, y: top - r * 0.78, xPercent: -50, yPercent: -50 });
+    gsap.set(q(".s-face-part"), { width: r * 1.3, height: r * 1.1 });
+
+    tl.to(roof, { morphSVG: pose(0), duration: 0.6, ease: "power2.inOut" }, 0.05)
+      // up it pops, with a little overshoot
+      .to(roof, { morphSVG: pose(1), duration: 0.55, ease: "back.out(2.2)" }, 0.7)
+      .fromTo(face, { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(3)" }, 1.05)
+      // pat, pat
+      .to(roof, { morphSVG: pose(1, 1), duration: 0.14, ease: "power2.out" }, 1.45)
+      .to(roof, { morphSVG: pose(1, 0), duration: 0.16, ease: "power2.in" }, 1.59)
+      .to(roof, { morphSVG: pose(1, 1), duration: 0.14, ease: "power2.out" }, 1.8)
+      .to(roof, { morphSVG: pose(1, 0), duration: 0.16, ease: "power2.in" }, 1.94);
+    [1.75, 2.1].forEach((t) => bump(tl, mid, t, -3));
+    tl.fromTo(q(".s-tongue"), { scaleY: 0.4 }, { scaleY: 1, duration: 0.18, yoyo: true, repeat: 3, ease: "sine.inOut" }, 2.15);
+    // blink, ear flap, blink
+    tl.to(q(".s-eye"), { scaleY: 0.1, duration: 0.07, yoyo: true, repeat: 1, ease: "power1.inOut" }, 2.35)
+      .to(roof, { morphSVG: pose(1, 0, 1), duration: 0.12, yoyo: true, repeat: 1, ease: "power1.inOut" }, 2.6)
+      .to(q(".s-eye"), { scaleY: 0.1, duration: 0.07, yoyo: true, repeat: 1, ease: "power1.inOut" }, 3.05)
+      // and back down behind the letters
+      .to(face, { opacity: 0, scale: 0.8, duration: 0.2, ease: "power2.in" }, 3.45)
+      .to(roof, { morphSVG: pose(0), duration: 0.45, ease: "power2.in" }, 3.45)
+      .to(roof, { morphSVG: home, duration: 0.8, ease: "power3.inOut" }, 3.95);
   },
 
   "boat-insurance": (tl, q, g, w) => {
@@ -429,13 +493,15 @@ function Markup({ kind }: { kind: string }) {
       );
     case "pet-insurance":
       return (
-        <>
-          {Array.from({ length: 12 }, (_, i) => (
-            <span key={i} className="sc s-paw absolute top-0 left-0 z-20">
-              <PawPrint className="size-5 fill-teal/15 text-teal sm:size-6" strokeWidth={1.75} />
-            </span>
-          ))}
-        </>
+        <div className="sc s-face absolute top-0 left-0 z-20" style={{ opacity: 0 }}>
+          <div className="s-face-part relative">
+            <span className="s-eye absolute top-[14%] left-[27%] aspect-square w-[11%] rounded-full bg-ink" />
+            <span className="s-eye absolute top-[14%] right-[27%] aspect-square w-[11%] rounded-full bg-ink" />
+            {/* nose, then a little tongue */}
+            <span className="absolute top-[38%] left-1/2 h-[15%] w-[24%] -translate-x-1/2 rounded-[45%_45%_55%_55%] bg-ink" />
+            <span className="s-tongue absolute top-[56%] left-1/2 h-[20%] w-[15%] origin-top -translate-x-1/2 rounded-b-full bg-red" />
+          </div>
+        </div>
       );
     case "boat-insurance":
       return (
@@ -578,7 +644,7 @@ export default function HeroScene({ kind, delay = 0 }: { kind: string; delay?: n
       const roofPath = stageEl.querySelector<SVGPathElement>(".hero-roof path");
       const local = gsap.utils.selector(root);
       const q = ((sel: string) => (sel === ".__roof" ? (roofPath ? [roofPath] : []) : local(sel))) as unknown as Q;
-      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle"].includes(kind);
+      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance"].includes(kind);
       gsap.set(q(".sc"), { opacity: 1 });
       const stage = root.current!.parentElement!;
       const sr = stage.getBoundingClientRect();
