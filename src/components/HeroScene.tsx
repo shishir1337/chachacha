@@ -76,8 +76,8 @@ function dogPath(g: G, cx: number, top: number, r: number, rise: number, pawLift
   };
   const e = earFlap * 0.12;
   return [
-    `M${u(cx - 1.32 * r, top)}`,
-    paw(cx - 1.32 * r, cx - 0.8 * r),
+    `M${u(cx - 1.95 * r, top)}`,
+    paw(cx - 1.95 * r, cx - 1.45 * r),
     `L${u(cx - 0.72 * r, top)}`,
     // left side of the face up to where the ear hangs
     `C${u(cx - 0.8 * r, h(0.45))} ${u(cx - 0.78 * r, h(0.85))} ${u(cx - 0.66 * r, h(1.12))}`,
@@ -93,8 +93,45 @@ function dogPath(g: G, cx: number, top: number, r: number, rise: number, pawLift
     `C${u(cx + (1.16 + e) * r, h(1.12))} ${u(cx + (0.86 + e) * r, h(1.3))} ${u(cx + 0.66 * r, h(1.12))}`,
     // right side of the face back down
     `C${u(cx + 0.78 * r, h(0.85))} ${u(cx + 0.8 * r, h(0.45))} ${u(cx + 0.72 * r, top)}`,
-    `L${u(cx + 0.8 * r, top)}`,
-    paw(cx + 0.8 * r, cx + 1.32 * r),
+    `L${u(cx + 1.45 * r, top)}`,
+    paw(cx + 1.45 * r, cx + 1.95 * r),
+  ].join(" ");
+}
+
+/**
+ * A car in side profile, drawn as one line like the roof.
+ * x is the rear bumper, top is the road (the tops of the letters), L the car's length. Built in pixels, mapped to roof units.
+ */
+function carPath(g: G, x: number, top: number, L: number, bob = 0) {
+  const u = (px: number, py: number) => `${(((px - g.roofLeft) / g.roofW) * 800).toFixed(1)} ${g.toUnitY(py).toFixed(1)}`;
+  const rw = L * 0.1; // wheel radius
+  const H = L * 0.36; // body height above the axle line
+  const base = top - rw + bob; // body sits at axle height
+  const X = (f: number) => x + f * L;
+  const Y = (f: number) => base - f * H;
+  const K = 0.5523;
+  // wheel arch: a half circle over a wheel centred at cxw
+  const arch = (cxw: number) => {
+    const ar = rw * 1.18;
+    return [
+      `L${u(cxw + ar, base)}`,
+      `C${u(cxw + ar, base - K * ar)} ${u(cxw + K * ar, base - ar)} ${u(cxw, base - ar)}`,
+      `C${u(cxw - K * ar, base - ar)} ${u(cxw - ar, base - K * ar)} ${u(cxw - ar, base)}`,
+    ].join(" ");
+  };
+  return [
+    `M${u(X(0.02), base)}`,
+    // rear, trunk, the roof (a nod to the logo's roof), windshield, hood, nose
+    `C${u(X(0), Y(0.3))} ${u(X(0.01), Y(0.55))} ${u(X(0.05), Y(0.6))}`,
+    `L${u(X(0.16), Y(0.66))}`,
+    `C${u(X(0.24), Y(0.98))} ${u(X(0.34), Y(1.06))} ${u(X(0.46), Y(1.06))}`,
+    `C${u(X(0.58), Y(1.06))} ${u(X(0.66), Y(0.9))} ${u(X(0.74), Y(0.64))}`,
+    `C${u(X(0.84), Y(0.6))} ${u(X(0.95), Y(0.56))} ${u(X(0.99), Y(0.42))}`,
+    `C${u(X(1.0), Y(0.3))} ${u(X(1.0), Y(0.1))} ${u(X(0.97), base)}`,
+    // underside, dipping over both wheels, back to the rear
+    arch(X(0.78)),
+    arch(X(0.22)),
+    `L${u(X(0.02), base)}`,
   ].join(" ");
 }
 
@@ -148,13 +185,60 @@ const fadeAll = (tl: gsap.core.Timeline, q: Q, at: string | number = "+=0.6") =>
 
 const builds: Record<string, Build> = {
   "auto-insurance": (tl, q, g, w) => {
-    const car = q(".s-car")[0];
-    gsap.set(car, { x: -90, y: g.H - (car as HTMLElement).offsetHeight - 6 });
-    tl.fromTo(q(".s-road"), { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: "power2.out" })
-      .to(car, { x: g.W + 20, duration: 2.6, ease: "none" }, 0.35)
-      .fromTo(q(".s-car-body"), { y: 0 }, { y: -2.5, duration: 0.14, repeat: 15, yoyo: true, ease: "sine.inOut" }, "<");
-    passBumps(tl, w, -90, g.W + 20, 0.35, 2.6, -8);
-    fadeAll(tl, q, 3.1);
+    const roof = q(".__roof")[0] as SVGPathElement;
+    const home = roof.getAttribute("d")!;
+    const stage = roof.ownerSVGElement!.parentElement!;
+    const sr = stage.getBoundingClientRect();
+    const first = w.els[0].getBoundingClientRect();
+    const last = w.els[2].getBoundingClientRect();
+    const fs = parseFloat(getComputedStyle(w.els[1]).fontSize);
+    // "Cha Cha Cha" is the road: the car drives along the tops of the letters.
+    // Cap height of the letters: where the wheels actually touch.
+    const top = first.top - sr.top + fs * 0.2;
+    const L = fs * 1.35;
+    const rw = L * 0.1;
+    const startX = first.left - sr.left;
+    const endX = last.right - sr.left - L;
+    const DRIVE = 2.4;
+
+    const wheels = q(".s-wheel") as HTMLElement[];
+    const speed = q(".s-speed") as HTMLElement[];
+    wheels.forEach((el) => gsap.set(el, { width: rw * 2, height: rw * 2, opacity: 0 }));
+    const place = (x: number, bob: number, spin: number) => {
+      roof.setAttribute("d", carPath(g, x, top, L, bob));
+      [0.22, 0.78].forEach((f, i) => gsap.set(wheels[i], { x: x + f * L - rw, y: top - 2 * rw, rotation: spin }));
+      speed.forEach((el, i) => gsap.set(el, { x: x - fs * (0.28 + i * 0.1), y: top - rw * (1.6 + i * 0.9) }));
+    };
+
+    // The roof becomes a parked car at the start of the road.
+    tl.to(roof, { morphSVG: carPath(g, startX, top, L), duration: 0.8, ease: "power3.inOut" }, 0.05)
+      .call(() => place(startX, 0, 0), undefined, 0.86)
+      .to(wheels, { opacity: 1, duration: 0.2 }, 0.86);
+
+    // Drive: ease away, cruise, ease to a stop. Wheels spin with the distance travelled.
+    const st = { p: 0 };
+    tl.to(
+      st,
+      {
+        p: 1,
+        duration: DRIVE,
+        ease: "power1.inOut",
+        onUpdate() {
+          const x = startX + (endX - startX) * st.p;
+          const moving = Math.sin(Math.PI * st.p);
+          const bob = Math.sin(st.p * 60) * 1.4 * moving;
+          place(x, bob, ((x - startX) / rw) * (180 / Math.PI));
+          speed.forEach((el, i) => gsap.set(el, { opacity: 0.55 * moving, scaleX: 0.6 + moving * (0.6 + 0.2 * i) }));
+        },
+      },
+      1.05,
+    );
+    // Each "Cha" dips a little as the car rolls over it.
+    passBumps(tl, w, startX, endX + L * 0.5, 1.05, DRIVE, 3);
+
+    // Parked at the end, it folds back into the roof.
+    tl.to(wheels, { opacity: 0, duration: 0.2 }, 1.05 + DRIVE + 0.1)
+      .to(roof, { morphSVG: home, duration: 0.9, ease: "power3.inOut" }, 1.05 + DRIVE + 0.15);
   },
 
   "pet-insurance": (tl, q, g, w) => {
@@ -478,17 +562,15 @@ function Markup({ kind }: { kind: string }) {
     case "auto-insurance":
       return (
         <>
-          {road}
-          <div className="sc s-car absolute top-0 left-0 z-20">
-            <div className="s-car-body flex items-center gap-1">
-              <span className="flex flex-col gap-1 opacity-40">
-                <span className="h-px w-5 bg-ink" />
-                <span className="h-px w-8 bg-ink" />
-                <span className="h-px w-4 bg-ink" />
-              </span>
-              <Car className={iconClass} strokeWidth={1.5} />
-            </div>
-          </div>
+          {[0, 1].map((i) => (
+            <span key={i} className="sc s-wheel absolute top-0 left-0 z-20 rounded-full border-[3px] border-ink bg-porcelain" style={{ opacity: 0 }}>
+              <span className="absolute top-[18%] left-1/2 h-[64%] w-[3px] -translate-x-1/2 rounded-full bg-ink/60" />
+              <span className="absolute top-1/2 left-1/2 size-[26%] -translate-1/2 rounded-full bg-red" />
+            </span>
+          ))}
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="sc s-speed absolute top-0 left-0 z-20 h-[3px] w-10 origin-right rounded-full bg-ink/40" style={{ opacity: 0 }} />
+          ))}
         </>
       );
     case "pet-insurance":
@@ -644,7 +726,7 @@ export default function HeroScene({ kind, delay = 0 }: { kind: string; delay?: n
       const roofPath = stageEl.querySelector<SVGPathElement>(".hero-roof path");
       const local = gsap.utils.selector(root);
       const q = ((sel: string) => (sel === ".__roof" ? (roofPath ? [roofPath] : []) : local(sel))) as unknown as Q;
-      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance"].includes(kind);
+      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance", "auto-insurance"].includes(kind);
       gsap.set(q(".sc"), { opacity: 1 });
       const stage = root.current!.parentElement!;
       const sr = stage.getBoundingClientRect();
