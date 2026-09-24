@@ -1,0 +1,230 @@
+CHACHA INSURANCE - IMAGE PROMPTS
+============================================================
+
+All images: JPEG (.jpg), sRGB, save into /public/img/ using the exact file name below.
+Recommended size is 2x the largest on-screen size, so photos stay sharp on retina screens.
+If your generator cannot hit the exact pixels, keep the aspect ratio and go as large as it allows
+(minimum 1200 px on the short side). Keep the main subject near the centre so crops stay safe.
+
+Shared style (already appended to every prompt below):
+Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+------------------------------------------------------------
+NOT DONE YET (0)
+------------------------------------------------------------
+
+All images are in.
+
+------------------------------------------------------------
+DONE (22)
+------------------------------------------------------------
+
+0. cover-pet.jpg   (NEW, replaces cover-motorcycle.jpg)
+   Where it shows : Home: Coverage section preview + hero policy cards
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : A happy dog resting beside its owner at home
+   Prompt         :
+   A happy golden retriever resting its head on its owner's lap on a light sofa at home, the owner's hand gently on its head, a small crimson red collar tag, soft window light. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+1. independent.jpg
+   Where it shows : Home: 'On your side of the table' story section
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : An agent and a couple reviewing insurance options together at a bright table
+   Prompt         :
+   A friendly insurance agent sitting beside a young couple at a light oak table, a laptop open showing several options side by side, everyone relaxed and smiling. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+2. cover-auto.jpg
+   Where it shows : Home: Coverage section preview + hero policy cards
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : A modern car on an open coastal road
+   Prompt         :
+   A modern silver car driving along an open coastal highway at golden hour, seen from a low three-quarter angle. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+3. cover-boat.jpg
+   Where it shows : Home: Coverage section preview + hero policy cards
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : A small motorboat on calm blue water
+   Prompt         :
+   A small white motorboat cruising on calm open water, aerial view, soft wake trailing behind, clear sky. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+4. cover-homeowners.jpg
+   Where it shows : Home: Coverage section preview + hero policy cards
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : A modern family home at dusk with warm windows
+   Prompt         :
+   A modern two-storey family home at dusk with glowing windows, tidy front lawn, architectural photography. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+5. cover-renters.jpg
+   Where it shows : Home: Coverage section preview + hero policy cards
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : A bright apartment living room with moving boxes
+   Prompt         :
+   A bright city apartment living room on moving day, a sofa, plants and a couple of open cardboard boxes, sunlight through large windows. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+6. cover-condo.jpg
+   Where it shows : Home: Coverage section preview + hero policy cards
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : A condo balcony overlooking a city skyline
+   Prompt         :
+   A stylish condo balcony with two chairs overlooking a city skyline in soft morning light. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+7. cover-flood.jpg
+   Where it shows : Home: Coverage section preview + hero policy cards
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : Rain falling on a residential street
+   Prompt         :
+   Heavy rain falling on a quiet residential street, puddles reflecting house lights, moody but hopeful, no damage shown. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+8. cover-life.jpg
+   Where it shows : Home: Coverage section preview + hero policy cards
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : A parent lifting a laughing child in a sunny park
+   Prompt         :
+   A parent lifting a laughing young child into the air in a sunny park, candid and joyful. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+9. cover-health.jpg
+   Where it shows : Home: Coverage section preview + hero policy cards
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : A person stretching after a morning run
+   Prompt         :
+   A person in their thirties stretching after a morning run in a green park, healthy and energised. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+10. cover-umbrella.jpg
+   Where it shows : Home: Coverage section preview + hero policy cards
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : A single red umbrella in the rain
+   Prompt         :
+   A single crimson red umbrella held over a person walking through light rain on a clean modern plaza, overhead angle. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+11. cover-business.jpg
+   Where it shows : Home: Coverage section preview + hero policy cards
+   Aspect ratio   : 4:5
+   Recommended px : 1600 x 2000
+   Current file   : 928 x 1152
+   Alt text       : A small business owner opening their shop
+   Prompt         :
+   A small business owner flipping the sign to open on the glass door of a modern cafe or boutique, morning light. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+12. why-chacha.jpg
+   Where it shows : Home: Why ChaCha section (tall image)
+   Aspect ratio   : 3:4
+   Recommended px : 1536 x 2048
+   Current file   : 896 x 1200
+   Alt text       : A ChaCha agent smiling while on a phone call
+   Prompt         :
+   A warm, professional insurance agent wearing a headset, smiling while helping a customer on a call in a modern office with deep teal and crimson accents. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+13. cta.jpg
+   Where it shows : Home: closing call to action (quote card thumbnail too)
+   Aspect ratio   : 16:10
+   Recommended px : 2400 x 1500
+   Current file   : 1312 x 816
+   Alt text       : Keys handed over in front of a new home
+   Prompt         :
+   Close-up of a hand passing a set of house and car keys to another hand, blurred modern home in the background. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+14. moment-car.jpg
+   Where it shows : Home: Life moments carousel card
+   Aspect ratio   : 3:4
+   Recommended px : 1536 x 2048
+   Current file   : 896 x 1200
+   Alt text       : A new car owner holding keys beside their car
+   Prompt         :
+   A delighted person in their late twenties holding up a new set of car keys beside a freshly bought hatchback, dealership lot softly blurred. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+15. moment-move.jpg
+   Where it shows : Home: Life moments carousel card
+   Aspect ratio   : 3:4
+   Recommended px : 1536 x 2048
+   Current file   : 896 x 1200
+   Alt text       : A young renter carrying a box into a bright apartment
+   Prompt         :
+   A young renter carrying a cardboard box and a potted plant into a sunlit empty apartment, candid moving-day moment. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+16. moment-home.jpg
+   Where it shows : Home: Life moments carousel card
+   Aspect ratio   : 3:4
+   Recommended px : 1536 x 2048
+   Current file   : 896 x 1200
+   Alt text       : A couple standing in front of their new house
+   Prompt         :
+   A happy couple standing on the front steps of their new modern home, holding a small house key, evening light. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+17. moment-wedding.jpg
+   Where it shows : Home: Life moments carousel card
+   Aspect ratio   : 3:4
+   Recommended px : 1536 x 2048
+   Current file   : 896 x 1200
+   Alt text       : A newly married couple walking hand in hand
+   Prompt         :
+   A newly married couple walking hand in hand down a tree-lined street, relaxed and joyful, understated wedding outfits. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+18. moment-baby.jpg
+   Where it shows : Home: Life moments carousel card
+   Aspect ratio   : 3:4
+   Recommended px : 1536 x 2048
+   Current file   : 896 x 1200
+   Alt text       : A parent holding a newborn by a window
+   Prompt         :
+   A parent gently holding a sleeping newborn near a bright window, soft and tender, minimal nursery. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+19. moment-business.jpg
+   Where it shows : Home: Life moments carousel card
+   Aspect ratio   : 3:4
+   Recommended px : 1536 x 2048
+   Current file   : 896 x 1200
+   Alt text       : A small business owner setting up a new shop
+   Prompt         :
+   A small business owner arranging products on shelves in a newly opened boutique, proud and focused. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+20. moment-boat.jpg
+   Where it shows : Home: Life moments carousel card
+   Aspect ratio   : 3:4
+   Recommended px : 1536 x 2048
+   Current file   : 896 x 1200
+   Alt text       : Friends relaxing on a small boat
+   Prompt         :
+   Friends relaxing on a small motorboat on a calm lake in summer, laughing, clear water. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+21. moment-renewal.jpg
+   Where it shows : Home: Life moments carousel card
+   Aspect ratio   : 3:4
+   Recommended px : 1536 x 2048
+   Current file   : 896 x 1200
+   Alt text       : A person reading a renewal letter at the kitchen table
+   Prompt         :
+   A person at a bright kitchen table reading an insurance renewal letter, coffee cup nearby, thoughtful but calm expression. Editorial photograph, natural daylight, shallow depth of field, cool neutral tones with one small accent of crimson red, premium and calm, no text, no logos.
+
+------------------------------------------------------------
+FROM THE CURRENT WEBSITE (no prompt needed)
+------------------------------------------------------------
+
+- blog-7-secrets-to-save-on-car-insurance-for-18-year-olds.jpg  (1600 x 842, Home: blog section, shown 4:5)
+- blog-six-simple-strategies-to-reduce-your-automobile-insurance-premium.jpg  (1600 x 1011, Home: blog section, shown 4:5)
+- blog-top-eight-tips-to-securing-your-home-against-theft.jpg  (1600 x 842, Home: blog section, shown 4:5)
+- blog-watch-out-for-these-five-classical-homeowner-mistakes.jpg  (1600 x 842, Home: blog section, shown 4:5)
+
+No longer used: cover-motorcycle.jpg (Motorcycle was replaced by Pet). Safe to delete.
+After adding a file, tell Claude (or set ready: true for it in src/lib/images.ts).
