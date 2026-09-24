@@ -483,12 +483,103 @@ const builds: Record<string, Build> = {
   },
 
   "condo-insurance": (tl, q, g, w) => {
-    const step = Math.max(14, g.roofH * 0.42);
-    q(".s-floor-roof").forEach((el, i) => gsap.set(el, { y: -(i + 1) * step, scaleX: 0.72 - i * 0.2 }));
-    tl.fromTo(q(".s-floor-roof"), { opacity: 0, yPercent: 40 }, { opacity: 1, yPercent: 0, duration: 0.6, stagger: 0.25, ease: "back.out(1.6)" })
-      .to(w.els, { yPercent: -6, duration: 0.6, stagger: 0.08, ease: "power2.out" }, 0.2)
-      .to(w.els, { yPercent: 0, duration: 0.7, stagger: 0.06, ease: "power2.inOut" }, 2.2)
-      .to(q(".s-floor-roof"), { yPercent: 40, opacity: 0, duration: 0.5, stagger: { each: 0.15, from: "end" }, ease: "power2.in" }, "+=1.3");
+    const roof = q(".__roof")[0] as SVGPathElement;
+    const home = roof.getAttribute("d")!;
+    const stage = roof.ownerSVGElement!.parentElement!;
+    const sr = stage.getBoundingClientRect();
+    const mid = w.els[1];
+    const fs = parseFloat(getComputedStyle(mid).fontSize);
+    const top = mid.getBoundingClientRect().top - sr.top + fs * 0.18; // tops of the letters: the ground
+    const cx = w.cx[1];
+
+    // A low, wide block: as tall as the space under the headline allows.
+    const lead = document.querySelector(".hero-lead")?.getBoundingClientRect();
+    const room = lead ? top - (lead.bottom - sr.top) - fs * 0.2 : fs * 0.7;
+    const BH = Math.max(fs * 0.45, Math.min(fs * 0.78, room));
+    const BW = fs * 2.9;
+    const l = cx - BW / 2;
+    const rt = cx + BW / 2;
+    const y0 = top - BH;
+    const e = fs * 0.05;
+    const u = (px: number, py: number) => `${(((px - g.roofLeft) / g.roofW) * 800).toFixed(1)} ${g.toUnitY(py).toFixed(1)}`;
+    const building = [
+      `M${u(l, top)}`,
+      `L${u(l, y0)}`,
+      `L${u(l - e, y0)}`,
+      `L${u(l - e, y0 - e)}`,
+      `L${u(rt + e, y0 - e)}`,
+      `L${u(rt + e, y0)}`,
+      `L${u(rt, y0)}`,
+      `L${u(rt, top)}`,
+    ].join(" ");
+
+    // Window grid. The middle column is the elevator shaft; your unit is top floor, just right of it.
+    const rows = fs < 80 ? 2 : 3;
+    const cols = 5;
+    const cw = BW / cols;
+    const rh = BH / rows;
+    const ww = Math.min(cw * 0.5, rh * 0.9);
+    const wh = rh * 0.52;
+    const cell = (c: number, rr: number) => ({ x: l + (c + 0.5) * cw, y: y0 + (rr + 0.5) * rh });
+    const wins = q(".s-win") as HTMLElement[];
+    let k = 0;
+    const order: HTMLElement[] = [];
+    for (let rr = rows - 1; rr >= 0; rr--) {
+      for (let c = 0; c < cols; c++) {
+        if (c === 2) continue;
+        const el = wins[k++];
+        const p = cell(c, rr);
+        gsap.set(el, { display: "block", width: ww, height: wh, x: p.x - ww / 2, y: p.y - wh / 2, opacity: 0, scale: 0.6 });
+        el.dataset.unit = c === 3 && rr === 0 ? "1" : "";
+        order.push(el);
+      }
+    }
+    wins.slice(k).forEach((el) => gsap.set(el, { display: "none" }));
+    const mine = order.find((el) => el.dataset.unit === "1")!;
+
+    const lift = q(".s-lift")[0] as HTMLElement;
+    const ls = Math.min(cw * 0.32, rh * 0.62);
+    const bottomCell = cell(2, rows - 1);
+    const topCell = cell(2, 0);
+    gsap.set(lift, { width: ls, height: ls, x: bottomCell.x - ls / 2, y: bottomCell.y - ls / 2, opacity: 0, scale: 0.5 });
+
+    // Red line traced around your unit, drawn in true pixels.
+    const svg = q(".s-unit")[0] as SVGSVGElement;
+    svg.setAttribute("viewBox", `0 0 ${g.W} ${g.H}`);
+    const ring = svg.querySelector("path")!;
+    const mc = cell(3, 0);
+    const pw = cw * 0.86;
+    const ph = rh * 0.84;
+    const rx = Math.min(8, ph * 0.25);
+    const x1 = mc.x - pw / 2;
+    const x2 = mc.x + pw / 2;
+    const y1 = mc.y - ph / 2;
+    const y2 = mc.y + ph / 2;
+    ring.setAttribute(
+      "d",
+      `M${x1 + rx} ${y1} H${x2 - rx} Q${x2} ${y1} ${x2} ${y1 + rx} V${y2 - rx} Q${x2} ${y2} ${x2 - rx} ${y2} H${x1 + rx} Q${x1} ${y2} ${x1} ${y2 - rx} V${y1 + rx} Q${x1} ${y1} ${x1 + rx} ${y1} Z`,
+    );
+    const len = ring.getTotalLength();
+    gsap.set(ring, { strokeDasharray: len, strokeDashoffset: len, opacity: 0 });
+
+    // 1. The roof grows into the building.
+    tl.to(roof, { morphSVG: building, duration: 0.9, ease: "power3.inOut" }, 0.05);
+    // 2. Windows come on floor by floor, from the bottom up.
+    order.forEach((el, i) => {
+      tl.to(el, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, 0.9 + Math.floor(i / 4) * 0.16 + (i % 4) * 0.04);
+    });
+    // 3. The elevator rides up to your floor.
+    const t3 = 0.9 + rows * 0.16 + 0.35;
+    tl.to(lift, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(2)" }, t3)
+      .to(lift, { y: topCell.y - ls / 2, duration: 0.85, ease: "power2.inOut" }, t3 + 0.25)
+      .to(lift, { scale: 1.25, duration: 0.12, yoyo: true, repeat: 1, ease: "power1.out" }, t3 + 1.1)
+      // 4. Your unit lights up, and a line is traced around just that one.
+      .to(mine, { backgroundColor: "rgb(255 205 130)", borderColor: "#d0142c", scale: 1.08, duration: 0.4, ease: "power2.out" }, t3 + 1.25)
+      .set(ring, { opacity: 1 }, t3 + 1.35)
+      .to(ring, { strokeDashoffset: 0, duration: 0.55, ease: "power2.inOut" }, t3 + 1.35);
+    // 5. Lights out, and back to the roof.
+    const t5 = t3 + 2.6;
+    tl.to([...order, lift, ring], { opacity: 0, duration: 0.4, ease: "power1.in" }, t5).to(roof, { morphSVG: home, duration: 0.85, ease: "power3.inOut" }, t5 + 0.2);
   },
 
   "flood-insurance": (tl, q, g, w) => {
@@ -776,17 +867,13 @@ function Markup({ kind }: { kind: string }) {
     case "condo-insurance":
       return (
         <>
-          {[0, 1].map((i) => (
-            <svg
-              key={i}
-              className="sc s-floor-roof absolute -top-[1%] left-[1%] z-20 h-[16%] w-[97%] overflow-visible text-red/70 sm:-top-[4%] sm:h-[26%]"
-              viewBox="0 0 800 120"
-              preserveAspectRatio="none"
-              fill="none"
-            >
-              <path d={ROOF_D} stroke="currentColor" strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-            </svg>
+          {Array.from({ length: 12 }, (_, i) => (
+            <span key={i} className="sc s-win absolute top-0 left-0 z-20 rounded-[3px] border-2 border-ink/25 bg-transparent" style={{ opacity: 0 }} />
           ))}
+          <span className="sc s-lift absolute top-0 left-0 z-20 rounded-[3px] bg-red" style={{ opacity: 0 }} />
+          <svg className="sc s-unit absolute inset-0 z-20 h-full w-full overflow-visible" fill="none">
+            <path stroke="#d0142c" strokeWidth="2.5" strokeLinejoin="round" style={{ opacity: 0 }} />
+          </svg>
         </>
       );
     case "flood-insurance":
@@ -872,7 +959,7 @@ export default function HeroScene({ kind, delay = 0 }: { kind: string; delay?: n
       const roofPath = stageEl.querySelector<SVGPathElement>(".hero-roof path");
       const local = gsap.utils.selector(root);
       const q = ((sel: string) => (sel === ".__roof" ? (roofPath ? [roofPath] : []) : local(sel))) as unknown as Q;
-      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance", "auto-insurance", "boat-insurance", "renters-insurance"].includes(kind);
+      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance", "auto-insurance", "boat-insurance", "renters-insurance", "condo-insurance"].includes(kind);
       gsap.set(q(".sc"), { opacity: 1 });
       const stage = root.current!.parentElement!;
       const sr = stage.getBoundingClientRect();
