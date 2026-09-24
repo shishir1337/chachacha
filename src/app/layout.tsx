@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Mona_Sans, Hanken_Grotesk } from "next/font/google";
+import { Kaushan_Script, Mona_Sans, Hanken_Grotesk } from "next/font/google";
 import SmoothScroll from "@/components/SmoothScroll";
 import "./globals.css";
 
@@ -7,6 +7,14 @@ const mona = Mona_Sans({
   variable: "--font-mona",
   subsets: ["latin"],
   axes: ["wdth"],
+  display: "swap",
+});
+
+// Stand-in brush face for the footer wordmark. Swap for Haydon Brush (next/font/local) once licensed.
+const brush = Kaushan_Script({
+  variable: "--font-brush",
+  subsets: ["latin"],
+  weight: "400",
   display: "swap",
 });
 
@@ -75,7 +83,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${mona.variable} ${hanken.variable} antialiased`}
+      className={`${mona.variable} ${hanken.variable} ${brush.variable} antialiased`}
     >
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />

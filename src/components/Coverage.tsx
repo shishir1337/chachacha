@@ -120,7 +120,7 @@ export default function Coverage() {
 
         <div className="mt-10 grid gap-10 lg:mt-14 lg:grid-cols-[7fr_5fr] lg:gap-16">
           {/* list */}
-          <div ref={listRef} className="space-y-12">
+          <div ref={listRef} className="space-y-12 lg:pb-[calc(8vh+14rem)]">
             <AnimatePresence mode="popLayout" initial={false}>
               {groups.map((cat) => (
                 <motion.div
@@ -242,7 +242,9 @@ export default function Coverage() {
                   >
                     {/* a slow drift keeps the photo alive without pulling focus */}
                     <motion.div initial={{ scale: 1.12 }} animate={{ scale: 1 }} transition={{ duration: 6, ease: "easeOut" }}>
-                      <ImageSlot slot={current.image} sizes="40vw" />
+                      <div className="h-[min(54vh,34rem)]">
+                        <ImageSlot slot={current.image} sizes="40vw" fill />
+                      </div>
                     </motion.div>
                   </motion.div>
                 </AnimatePresence>

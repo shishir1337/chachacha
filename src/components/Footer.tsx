@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { categories, contact } from "@/lib/content";
-import FluidWord from "./FluidWord";
+import SketchMark from "./SketchMark";
 
 const company = [
   { label: "About us", href: "/about-us" },
@@ -99,11 +99,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 pt-8">
-          <FluidWord
-            text="ChaCha Insurance"
-            style={{ backgroundImage: "linear-gradient(90deg, rgb(29 26 32 / 0.07), rgb(27 107 102 / 0.16) 50%, rgb(29 26 32 / 0.07))" }}
-            className="font-display overflow-hidden bg-clip-text text-center text-[min(9.2vw,8.1rem)] leading-[0.9] font-black tracking-[-0.05em] whitespace-nowrap text-transparent select-none"
-          />
+          <SketchMark />
         </div>
 
         <div className="mt-10 grid gap-6 border-t border-ink/10 pt-8 text-sm text-slate lg:grid-cols-[1fr_2fr]">
