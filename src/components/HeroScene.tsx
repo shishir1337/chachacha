@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
-import { Car, Heart, KeyRound, Sailboat } from "lucide-react";
+import { Heart, KeyRound } from "lucide-react";
 import { allProducts } from "@/lib/content";
 import { coverIcons } from "@/lib/icons";
 
@@ -133,6 +133,46 @@ function carPath(g: G, x: number, top: number, L: number, bob = 0) {
     arch(X(0.22)),
     `L${u(X(0.02), base)}`,
   ].join(" ");
+}
+
+/**
+ * A sailboat riding a wave that runs along the tops of the letters, drawn as one line.
+ * Wave: water line at `top`, amplitude A, wavelength lam, moving by `phase`.
+ * The boat sits at bx on the wave and tilts with its slope; sail (0..1) raises the mast and sail.
+ */
+function boatPath(g: G, top: number, x0: number, x1: number, A: number, lam: number, phase: number, bx: number, L: number, sail: number) {
+  const u = (px: number, py: number) => `${(((px - g.roofLeft) / g.roofW) * 800).toFixed(1)} ${g.toUnitY(py).toFixed(1)}`;
+  const water = (x: number) => top - A * Math.sin((2 * Math.PI * x) / lam - phase);
+  const yb = water(bx);
+  const slope = (water(bx + 2) - water(bx - 2)) / 4;
+  const ang = Math.atan(slope) * 0.8;
+  const c = Math.cos(ang);
+  const sn = Math.sin(ang);
+  // boat-local point (right = forward, up = negative y) rotated onto the wave
+  const b = (lx: number, ly: number) => u(bx + lx * c - ly * sn, yb + lx * sn + ly * c);
+  const stern = -0.5 * L;
+  const bow = 0.55 * L;
+  const pts: string[] = [];
+  const sternX = bx + stern * c;
+  for (let x = x0; x < sternX; x += 6) pts.push(`${pts.length ? "L" : "M"}${u(x, water(x))}`);
+  const mastTop = -0.5 * L * sail;
+  pts.push(
+    `L${b(stern + 0.04 * L, 0)}`,
+    // hull: rises from the water at the stern, a shallow belly, up to a raised bow
+    `L${b(stern, -0.14 * L)}`,
+    `C${b(-0.42 * L, 0.04 * L)} ${b(0.36 * L, 0.04 * L)} ${b(bow, -0.18 * L)}`,
+    // sail: bow up to the masthead, down the leech to the boom, along the boom to the mast, up and down the mast
+    `L${b(0.02 * L, mastTop - 0.18 * L)}`,
+    `L${b(-0.4 * L, -0.24 * L)}`,
+    `L${b(-0.06 * L, -0.2 * L)}`,
+    `L${b(-0.06 * L, mastTop - 0.24 * L * sail)}`,
+    `L${b(-0.06 * L, -0.2 * L)}`,
+    `L${b(bow, -0.18 * L)}`,
+    `L${b(bow - 0.04 * L, 0)}`,
+  );
+  for (let x = bx + (bow - 0.04 * L) * c + 6; x <= x1; x += 6) pts.push(`L${u(x, water(x))}`);
+  pts.push(`L${u(x1, water(x1))}`);
+  return pts.join(" ");
 }
 
 /** Height of the canopy (in roof units) at x, for rain to land on. */
@@ -281,21 +321,43 @@ const builds: Record<string, Build> = {
   },
 
   "boat-insurance": (tl, q, g, w) => {
-    const boat = q(".s-boat")[0];
-    const water = Math.max(18, g.lane * 0.55);
-    gsap.set(q(".s-water"), { height: water });
-    gsap.set(boat, { x: g.W * 0.05, y: g.H - water - (boat as HTMLElement).offsetHeight + 8 });
-    tl.fromTo(q(".s-water"), { yPercent: 100 }, { yPercent: 0, duration: 0.8, ease: "power2.out" })
-      .to(q(".s-wave"), { xPercent: -50, duration: 3.4, ease: "none" }, 0)
-      .fromTo(boat, { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.4)
-      .to(boat, { x: g.W * 0.82, duration: 3, ease: "sine.inOut" }, 0.4)
-      .to(q(".s-boat-body"), { y: -5, rotation: 5, duration: 0.5, repeat: 5, yoyo: true, ease: "sine.inOut" }, 0.4)
-      .to(q(".s-water"), { yPercent: 100, duration: 0.8, ease: "power2.in" }, "-=0.4");
-    tl.to(w.els, { rotation: (i: number) => [-2.5, 2, -2.5][i], yPercent: -3, duration: 0.7, ease: "sine.inOut", transformOrigin: "50% 100%", repeat: 3, yoyo: true }, 0.5).to(
-      w.els,
-      { rotation: 0, yPercent: 0, duration: 0.5, ease: "sine.out" },
-    );
-    fadeAll(tl, q, "-=0.2");
+    const roof = q(".__roof")[0] as SVGPathElement;
+    const home = roof.getAttribute("d")!;
+    const stage = roof.ownerSVGElement!.parentElement!;
+    const sr = stage.getBoundingClientRect();
+    const first = w.els[0].getBoundingClientRect();
+    const last = w.els[2].getBoundingClientRect();
+    const fs = parseFloat(getComputedStyle(w.els[1]).fontSize);
+    // The tops of the letters are the sea.
+    // Sea level sits just above the tallest letters so the waves never cut through them.
+    const top = first.top - sr.top + fs * 0.06;
+    const x0 = first.left - sr.left - fs * 0.1;
+    const x1 = last.right - sr.left + fs * 0.1;
+    const L = fs * 0.85;
+    const lam = fs * 1.7;
+    const A = fs * 0.04;
+    const startX = x0 + L * 0.7;
+    const endX = x1 - L * 0.7;
+    const st = { phase: 0, bx: startX, amp: 0, sail: 0 };
+    const draw = () => {
+      roof.setAttribute("d", boatPath(g, top, x0, x1, A * st.amp, lam, st.phase, st.bx, L, st.sail));
+      // the words float gently on the same swell
+      w.els.forEach((el, i) => {
+        const cx = w.cx[i];
+        gsap.set(el, { y: -A * 0.5 * st.amp * Math.sin((2 * Math.PI * cx) / lam - st.phase), transformOrigin: "50% 100%" });
+      });
+    };
+
+    // Roof settles into calm water with the boat folded flat, then the swell builds and the sail goes up.
+    tl.to(roof, { morphSVG: boatPath(g, top, x0, x1, 0, lam, 0, startX, L, 0), duration: 0.7, ease: "power3.inOut" }, 0.05)
+      .to(st, { amp: 1, sail: 1, duration: 0.7, ease: "back.out(1.6)", onUpdate: draw }, 0.8)
+      // sail across, riding the waves
+      .to(st, { bx: endX, duration: 2.6, ease: "sine.inOut", onUpdate: draw }, 1.5)
+      .to(st, { phase: Math.PI * 7, duration: 3.6, ease: "none", onUpdate: draw }, 0.8)
+      // lower the sail and let the sea go calm
+      .to(st, { amp: 0, sail: 0, duration: 0.55, ease: "power2.inOut", onUpdate: draw }, 4.1)
+      .to(w.els, { y: 0, duration: 0.3 }, 4.65)
+      .to(roof, { morphSVG: home, duration: 0.85, ease: "power3.inOut" }, 4.65);
   },
 
   "homeowners-insurance": (tl, q, g, w) => {
@@ -585,17 +647,6 @@ function Markup({ kind }: { kind: string }) {
           </div>
         </div>
       );
-    case "boat-insurance":
-      return (
-        <>
-          <div className="sc s-water absolute inset-x-0 bottom-0 z-20 bg-teal/14">{wave}</div>
-          <div className="sc s-boat absolute top-0 left-0 z-20">
-            <div className="s-boat-body">
-              <Sailboat className="size-9 text-teal sm:size-12" strokeWidth={1.5} />
-            </div>
-          </div>
-        </>
-      );
     case "homeowners-insurance":
       return (
         <>
@@ -726,7 +777,7 @@ export default function HeroScene({ kind, delay = 0 }: { kind: string; delay?: n
       const roofPath = stageEl.querySelector<SVGPathElement>(".hero-roof path");
       const local = gsap.utils.selector(root);
       const q = ((sel: string) => (sel === ".__roof" ? (roofPath ? [roofPath] : []) : local(sel))) as unknown as Q;
-      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance", "auto-insurance"].includes(kind);
+      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance", "auto-insurance", "boat-insurance"].includes(kind);
       gsap.set(q(".sc"), { opacity: 1 });
       const stage = root.current!.parentElement!;
       const sr = stage.getBoundingClientRect();
