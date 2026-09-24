@@ -47,11 +47,11 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const words = WORDS.map(() => ({
-      w: { x: 75, v: 0 } as Spring,
+      w: { x: BASE_W, v: 0 } as Spring,
       g: { x: 760, v: 0 } as Spring,
       lift: { x: 0, v: 0 } as Spring,
       rot: { x: 0, v: 0 } as Spring,
-      ready: false,
+      ready: true,
       boost: 0,
     }));
     const roof = { px: { x: REST.px, v: 0 } as Spring, py: { x: REST.py, v: 0 } as Spring };
@@ -70,9 +70,6 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
     };
 
     // Words land one per beat, in step with the hero's entrance timeline.
-    const timers = WORDS.map((_, i) =>
-      window.setTimeout(() => (words[i].ready = true), (INTRO_DELAY + 0.8 + i * 0.22) * 1000),
-    );
 
     const onMove = (e: PointerEvent) => {
       const r = stage.current!.getBoundingClientRect();
@@ -178,7 +175,6 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
     window.addEventListener("resize", measure);
     return () => {
       cancelAnimationFrame(raf);
-      timers.forEach(clearTimeout);
       clearInterval(beat);
       io.disconnect();
       window.removeEventListener("pointermove", onMove);

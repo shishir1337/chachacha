@@ -17,40 +17,80 @@ export default function LifeMoments() {
   useEffect(() => {
     const el = track.current!;
     let down = false;
+    let moved = false;
     let startX = 0;
     let startLeft = 0;
-    let moved = false;
+    let lastX = 0;
+    let lastT = 0;
+    let velocity = 0;
+    let restore = 0;
+
+    // Scroll positions where each card lines up with the left edge.
+    const stops = () => {
+      // Same alignment the browser's snap uses: card edge minus its scroll margin, against the scroller's edge.
+      const base = el.getBoundingClientRect().left;
+      return Array.from(el.children).map((c) => {
+        const card = c as HTMLElement;
+        return el.scrollLeft + card.getBoundingClientRect().left - base - parseFloat(getComputedStyle(card).scrollMarginLeft);
+      });
+    };
+
     const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") return;
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
       down = true;
       moved = false;
-      startX = e.clientX;
+      startX = lastX = e.clientX;
+      lastT = performance.now();
       startLeft = el.scrollLeft;
+      velocity = 0;
+      clearTimeout(restore);
       el.style.scrollSnapType = "none";
+      el.style.scrollBehavior = "auto";
+      el.style.cursor = "grabbing";
     };
     const onMove = (e: PointerEvent) => {
       if (!down) return;
       const dx = e.clientX - startX;
       if (Math.abs(dx) > 4) moved = true;
       el.scrollLeft = startLeft - dx;
+      const now = performance.now();
+      const dt = Math.max(1, now - lastT);
+      velocity = 0.8 * ((e.clientX - lastX) / dt) + 0.2 * velocity;
+      lastX = e.clientX;
+      lastT = now;
     };
     const onUp = () => {
       if (!down) return;
       down = false;
-      el.style.scrollSnapType = "";
+      el.style.cursor = "";
+      // Carry the throw a little, then glide to the nearest card and hand back to native snapping.
+      const projected = el.scrollLeft - velocity * 220;
+      const max = el.scrollWidth - el.clientWidth;
+      const target = stops().reduce((best, x) => (Math.abs(x - projected) < Math.abs(best - projected) ? x : best), 0);
+      el.scrollTo({ left: Math.max(0, Math.min(max, target)), behavior: "smooth" });
+      restore = window.setTimeout(() => {
+        el.style.scrollSnapType = "";
+        el.style.scrollBehavior = "";
+      }, 650);
     };
     const onClick = (e: MouseEvent) => moved && e.preventDefault();
     const onScroll = () =>
       setEdges({ start: el.scrollLeft < 8, end: el.scrollLeft + el.clientWidth > el.scrollWidth - 8 });
+    const noNativeDrag = (e: Event) => e.preventDefault();
+    el.addEventListener("dragstart", noNativeDrag);
     el.addEventListener("pointerdown", onDown);
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     el.addEventListener("click", onClick, true);
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      el.removeEventListener("dragstart", noNativeDrag);
       el.removeEventListener("pointerdown", onDown);
+      clearTimeout(restore);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
       el.removeEventListener("click", onClick, true);
       el.removeEventListener("scroll", onScroll);
     };
@@ -98,7 +138,7 @@ export default function LifeMoments() {
       <ul
         ref={track}
         data-cursor="Drag"
-        className="no-scrollbar mt-14 flex snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain px-[max(clamp(1rem,4vw,3rem),calc((100vw-88rem)/2+3rem))] pb-4 select-none"
+        className="no-scrollbar mt-14 flex snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain px-[max(clamp(1rem,4vw,3rem),calc((100vw-88rem)/2+3rem))] pb-4 select-none md:cursor-grab [&_img]:pointer-events-none"
         aria-label="Life moments"
       >
         {moments.map((m, i) => (

@@ -12,12 +12,12 @@ export default function Compare() {
   const [side, setSide] = useState<Side>("captive");
   const [touched, setTouched] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { amount: 0.5, once: true });
+  const inView = useInView(ref, { amount: 0.25, once: true });
 
   // Flip to the ChaCha side once, shortly after the table comes into view, unless the visitor already chose.
   useEffect(() => {
     if (!inView || touched) return;
-    const t = setTimeout(() => setSide("chacha"), 1400);
+    const t = setTimeout(() => setSide("chacha"), 350);
     return () => clearTimeout(t);
   }, [inView, touched]);
 
@@ -83,7 +83,7 @@ export default function Compare() {
                 <dd className="relative flex items-start gap-4">
                   <motion.span
                     animate={{ backgroundColor: us ? "#1b6b66" : "#f2f3f6", color: us ? "#ffffff" : "#5c5864", scale: us ? [0.6, 1.15, 1] : 1 }}
-                    transition={{ duration: 0.45, delay: i * 0.06 }}
+                    transition={{ duration: 0.3, delay: i * 0.03 }}
                     className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full"
                     aria-hidden
                   >
@@ -97,11 +97,11 @@ export default function Compare() {
                           key={s}
                           aria-hidden={!shown}
                           className={clsx(
-                            "font-display col-start-1 row-start-1 block text-lg leading-snug font-medium tracking-tight transition-[transform,opacity] duration-500 ease-[var(--ease-out-expo)] sm:text-xl",
+                            "font-display col-start-1 row-start-1 block text-lg leading-snug font-medium tracking-tight transition-[transform,opacity] duration-300 ease-[var(--ease-out-expo)] sm:text-xl",
                             s === "chacha" ? "text-ink" : "text-ink/55",
                             shown ? "translate-y-0 opacity-100" : s === "chacha" ? "translate-y-full opacity-0" : "-translate-y-full opacity-0",
                           )}
-                          style={{ transitionDelay: `${i * 60}ms` }}
+                          style={{ transitionDelay: `${i * 30}ms` }}
                         >
                           {s === "chacha" ? row.chacha : row.captive}
                         </span>

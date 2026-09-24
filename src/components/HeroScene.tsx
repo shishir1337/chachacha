@@ -41,6 +41,22 @@ function ecgPath(t: number, amp: number) {
 /** An umbrella canopy: a dome with a scalloped rim. */
 const CANOPY_D =
   "M150 92 C 170 10, 290 -58, 400 -58 C 510 -58, 630 10, 650 92 Q 612 66, 575 92 Q 537 66, 500 92 Q 462 66, 425 92 Q 400 74, 375 92 Q 337 66, 300 92 Q 262 66, 225 92 Q 187 66, 150 92";
+/** The roof lifted high, to make room for everything moving in underneath. */
+const LIFTED_D = "M6 112 C 150 78, 300 -40, 400 -74 C 500 -40, 650 78, 794 112";
+
+/** Where a path sits vertically at x (both in roof units). */
+function pathYAt(d: string, x: number) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  el.setAttribute("d", d);
+  const len = el.getTotalLength();
+  let best = el.getPointAtLength(0);
+  for (let l = 0; l <= len; l += 4) {
+    const pt = el.getPointAtLength(l);
+    if (Math.abs(pt.x - x) < Math.abs(best.x - x)) best = pt;
+  }
+  return best.y;
+}
+
 /** Height of the canopy (in roof units) at x, for rain to land on. */
 const canopyY = (x: number) => {
   const t = (x - 400) / 250;
@@ -64,7 +80,8 @@ function geometry(root: HTMLElement) {
   // The lane under the words where vehicles drive and water sits (matches ChaStage's bottom padding).
   const lane = Math.max(48, 0.04 * window.innerWidth);
   const toPx = (ux: number, uy: number) => ({ x: roofLeft + (ux / 800) * roofW, y: roofTop + (uy / 120) * roofH });
-  return { W, H, lane, toPx, mobile, roofTop, roofH, roofLeft, roofW, roofY, peak: { x: roofLeft + roofW / 2, y: roofTop + roofH * 0.07 } };
+  const toUnitY = (py: number) => ((py - roofTop) / roofH) * 120;
+  return { W, H, lane, toPx, toUnitY, mobile, roofTop, roofH, roofLeft, roofW, roofY, peak: { x: roofLeft + roofW / 2, y: roofTop + roofH * 0.07 } };
 }
 
 type G = ReturnType<typeof geometry>;
@@ -134,22 +151,36 @@ const builds: Record<string, Build> = {
   },
 
   "homeowners-insurance": (tl, q, g, w) => {
-    const top = g.roofY(g.roofLeft + 4);
-    const bottom = g.H - 4;
-    gsap.set(q(".s-wall-l"), { x: g.roofLeft + 6, y: top, height: bottom - top });
-    gsap.set(q(".s-wall-r"), { x: g.roofLeft + g.roofW - 8, y: g.roofY(g.roofLeft + g.roofW - 4), height: bottom - g.roofY(g.roofLeft + g.roofW - 4) });
-    gsap.set(q(".s-floor"), { x: g.roofLeft + 6, y: bottom, width: g.roofW - 12 });
-    gsap.set(q(".s-window"), { x: g.peak.x - 9, y: g.peak.y + Math.max(18, g.roofH * 0.35) });
-    tl.fromTo(q(".s-wall-l, .s-wall-r"), { scaleY: 0 }, { scaleY: 1, duration: 0.8, ease: "power2.inOut", stagger: 0.1 })
-      .fromTo(q(".s-floor"), { scaleX: 0 }, { scaleX: 1, duration: 0.8, ease: "power2.inOut" }, "-=0.2")
-      .fromTo(q(".s-window"), { scale: 0, rotation: -45 }, { scale: 1, rotation: 0, duration: 0.6, ease: "back.out(2.5)" }, "-=0.3");
-    tl.to(w.els, { scaleY: 0.93, scaleX: 1.03, duration: 0.14, ease: "power2.out", transformOrigin: "50% 100%" }, "-=0.35").to(w.els, {
-      scaleY: 1,
-      scaleX: 1,
-      duration: 0.8,
-      ease: "elastic.out(1, 0.4)",
-    });
-    fadeAll(tl, q, "+=0.9");
+    const roof = q(".__roof")[0] as SVGPathElement;
+    const home = roof.getAttribute("d")!;
+    // The roof grows walls, a chimney and a floor, and "Cha Cha Cha" ends up inside.
+    const floor = g.toUnitY(g.H - g.lane * 0.3);
+    const slope = (x: number) => 2 + ((x - 400) / 434) * 110;
+    const HOUSE_D = `M-8 ${floor} L-8 106 L400 2 L566 ${slope(566)} L566 -12 L618 -12 L618 ${slope(618)} L834 112 L834 ${floor} Z`;
+
+    const glow = q(".s-glow path")[0];
+    glow.setAttribute("d", HOUSE_D);
+    const win = q(".s-house-window")[0];
+    const peak = g.toPx(400, 2);
+    gsap.set(win, { x: peak.x - 9, y: peak.y + Math.max(20, g.roofH * 0.34) });
+    const chim = g.toPx(592, -12);
+    q(".s-smoke").forEach((el, i) => gsap.set(el, { x: chim.x - 6 + i * 3, y: chim.y - 10 }));
+
+    tl.to(roof, { morphSVG: HOUSE_D, duration: 1.1, ease: "power3.inOut" }, 0.05)
+      .fromTo(glow, { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "power2.out" }, 1.0)
+      .fromTo(win, { scale: 0, rotation: -45 }, { scale: 1, rotation: 0, duration: 0.55, ease: "back.out(2.6)" }, 1.05)
+      .fromTo(
+        q(".s-smoke"),
+        { opacity: 0, scale: 0.4 },
+        { opacity: 0.5, scale: 1.6, y: "-=46", x: (i: number) => `+=${[6, -4, 10][i]}`, duration: 1.6, stagger: 0.35, ease: "sine.out" },
+        1.2,
+      )
+      .to(q(".s-smoke"), { opacity: 0, duration: 0.6, stagger: 0.35 }, 2.2)
+      // Home: the words settle in with a soft squash.
+      .to(w.els, { scaleY: 0.94, scaleX: 1.02, duration: 0.16, ease: "power2.out", transformOrigin: "50% 100%", stagger: 0.08 }, 1.2)
+      .to(w.els, { scaleY: 1, scaleX: 1, duration: 0.8, ease: "elastic.out(1, 0.45)", stagger: 0.08 }, 1.36)
+      .to([glow, win], { opacity: 0, duration: 0.5 }, 3.4)
+      .to(roof, { morphSVG: home, duration: 1, ease: "power3.inOut" }, 3.5);
   },
 
   "renters-insurance": (tl, q, g, w) => {
@@ -323,16 +354,42 @@ const builds: Record<string, Build> = {
   },
 
   bundle: (tl, q, g, w) => {
+    const roof = q(".__roof")[0] as SVGPathElement;
+    const home = roof.getAttribute("d")!;
     const icons = q(".s-parade");
     const n = icons.length;
-    icons.forEach((el, i) => {
-      const x = g.roofLeft + g.roofW * (0.12 + (0.76 * i) / (n - 1));
-      gsap.set(el, { x: x - 14, y: g.roofY(x) + (g.mobile ? 8 : 14) });
+    const size = (icons[0] as HTMLElement).offsetWidth;
+
+    // Landing spots follow the lifted roof, tucked just beneath it.
+    const spots = icons.map((_, i) => {
+      const ux = 205 + (390 * i) / (n - 1);
+      const pt = g.toPx(ux, pathYAt(LIFTED_D, ux));
+      return { x: pt.x - size / 2, y: pt.y + size * 0.3 };
     });
-    tl.fromTo(icons, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.45, stagger: 0.07, ease: "back.out(2.2)" })
-      .to(icons, { y: "-=6", duration: 0.3, stagger: 0.04, yoyo: true, repeat: 1, ease: "sine.inOut" }, "+=0.2");
-    beat(tl, w, 1.2);
-    fadeAll(tl, q, "+=0.8");
+    icons.forEach((el, i) => {
+      const ang = (i / n) * Math.PI * 2 + 0.6;
+      gsap.set(el, {
+        x: spots[i].x + Math.cos(ang) * g.W * 0.6,
+        y: spots[i].y - Math.abs(Math.sin(ang)) * g.H * 0.9 - 40,
+        rotation: gsap.utils.random(-160, 160),
+        scale: 0.6,
+        opacity: 0,
+      });
+    });
+
+    tl.to(roof, { morphSVG: LIFTED_D, duration: 0.8, ease: "power3.inOut" }, 0.05);
+    icons.forEach((el, i) => {
+      const t = 0.45 + i * 0.07;
+      tl.to(el, { opacity: 1, duration: 0.2 }, t).to(el, { x: spots[i].x, y: spots[i].y, rotation: 0, scale: 1, duration: 0.75, ease: "back.out(1.5)" }, t);
+    });
+    // Everyone is in: the roof settles over them and the words dance.
+    const settled = 0.45 + n * 0.07 + 0.65;
+    tl.to(roof, { morphSVG: "M6 112 C 150 84, 300 -24, 400 -56 C 500 -24, 650 84, 794 112", duration: 0.35, ease: "power2.out" }, settled)
+      .to(icons, { y: "+=5", duration: 0.35, ease: "power2.out" }, settled)
+      .to(icons, { y: "-=5", duration: 0.5, ease: "elastic.out(1, 0.5)" }, settled + 0.35);
+    beat(tl, w, settled + 0.2, -8);
+    tl.to(icons, { opacity: 0, y: "+=18", scale: 0.8, duration: 0.45, stagger: { each: 0.03, from: "edges" }, ease: "power2.in" }, settled + 1.3)
+      .to(roof, { morphSVG: home, duration: 0.85, ease: "power3.inOut" }, settled + 1.55);
   },
 };
 
@@ -394,10 +451,23 @@ function Markup({ kind }: { kind: string }) {
     case "homeowners-insurance":
       return (
         <>
-          <span className="sc s-wall-l absolute top-0 left-0 z-20 w-[3px] origin-top rounded-full bg-red" />
-          <span className="sc s-wall-r absolute top-0 left-0 z-20 w-[3px] origin-top rounded-full bg-red" />
-          <span className="sc s-floor absolute top-0 left-0 z-20 h-px origin-center bg-ink/20" />
-          <span className="sc s-window absolute top-0 left-0 z-20 size-[18px] rounded-[3px] bg-red" />
+          <svg
+            className="sc s-glow absolute -top-[4%] left-[1%] h-[26%] w-[97%] overflow-visible"
+            viewBox="0 0 800 120"
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <linearGradient id="house-glow" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor="#fbe6e9" />
+                <stop offset="1" stopColor="#fdf3f4" stopOpacity="0.2" />
+              </linearGradient>
+            </defs>
+            <path fill="url(#house-glow)" style={{ opacity: 0 }} />
+          </svg>
+          <span className="sc s-house-window absolute top-0 left-0 z-20 size-[18px] rounded-[3px] bg-red" />
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="sc s-smoke absolute top-0 left-0 z-20 size-3 rounded-full bg-ink/20 blur-[1px]" style={{ opacity: 0 }} />
+          ))}
         </>
       );
     case "renters-insurance":
@@ -477,8 +547,11 @@ function Markup({ kind }: { kind: string }) {
           {allProducts.map((p) => {
             const Icon = coverIcons[p.slug];
             return (
-              <span key={p.slug} className="sc s-parade absolute top-0 left-0 z-20 grid size-7 place-items-center rounded-full bg-white shadow-sm ring-1 ring-ink/10 sm:size-8">
-                <Icon className="size-3.5 text-ink sm:size-4" strokeWidth={1.75} />
+              <span
+                key={p.slug}
+                className="sc s-parade absolute top-0 left-0 z-20 grid size-8 place-items-center rounded-xl bg-white shadow-[0_8px_18px_-10px_rgb(10_34_41/0.45)] ring-1 ring-ink/8 sm:size-10"
+              >
+                <Icon className="size-4 text-ink sm:size-5" strokeWidth={1.75} />
               </span>
             );
           })}
@@ -505,7 +578,7 @@ export default function HeroScene({ kind, delay = 0 }: { kind: string; delay?: n
       const roofPath = stageEl.querySelector<SVGPathElement>(".hero-roof path");
       const local = gsap.utils.selector(root);
       const q = ((sel: string) => (sel === ".__roof" ? (roofPath ? [roofPath] : []) : local(sel))) as unknown as Q;
-      const morphs = kind === "health-insurance" || kind === "umbrella-insurance";
+      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle"].includes(kind);
       gsap.set(q(".sc"), { opacity: 1 });
       const stage = root.current!.parentElement!;
       const sr = stage.getBoundingClientRect();
@@ -539,7 +612,7 @@ export default function HeroScene({ kind, delay = 0 }: { kind: string; delay?: n
     <div
       ref={root}
       aria-hidden
-      className={`pointer-events-none absolute inset-0 ${kind === "business-insurance" ? "z-0" : "z-20"}`}
+      className={`pointer-events-none absolute inset-0 ${kind === "business-insurance" || kind === "homeowners-insurance" ? "z-0" : "z-20"}`}
       style={{ clipPath: "inset(-30% 0 0 0)" }}
     >
       <Markup kind={kind} />

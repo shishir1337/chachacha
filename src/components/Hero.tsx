@@ -2,15 +2,13 @@
 
 import { useRef, useState } from "react";
 import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { SplitText } from "gsap/SplitText";
 import { useGSAP } from "@gsap/react";
 import HeroPicker from "./HeroPicker";
 import { INTRO_DELAY } from "./motion";
 import ChaStage from "./ChaStage";
 import CoverCards from "./CoverCards";
 
-gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
+gsap.registerPlugin(useGSAP);
 
 export default function Hero() {
   const root = useRef<HTMLElement>(null);
@@ -27,39 +25,14 @@ export default function Hero() {
       const mm = gsap.matchMedia();
 
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        const split = SplitText.create(".hero-lead", { type: "lines", mask: "lines", linesClass: "pb-[0.08em]" });
-        const chas = gsap.utils.toArray<HTMLElement>(".cha");
-
-        const tl = gsap.timeline({ delay: INTRO_DELAY, defaults: { ease: "expo.out" } });
-        tl.from(split.lines, { yPercent: 110, duration: 1.1, stagger: 0.08 })
-          .from(".hero-sub", { y: 16, opacity: 0, duration: 0.9 }, "<0.2")
-          // Three beats. Each "Cha" steps in narrow and stretches wide on landing.
-          .fromTo(
-            chas,
-            { yPercent: 105, rotate: (i) => [-6, 5, -4][i] },
-            {
-              yPercent: 0,
-              rotate: 0,
-              duration: 0.9,
-              stagger: 0.22,
-              ease: "back.out(1.6)",
-            },
-            "-=0.6",
-          )
-          .fromTo(".hero-roof", { clipPath: "inset(-60% 100% -60% -2%)" }, { clipPath: "inset(-60% -2% -60% -2%)", duration: 1.3, ease: "power2.inOut", clearProps: "clipPath" }, "-=0.7")
-          .from(".hero-picker", { y: 40, opacity: 0, duration: 1.1 }, "-=1.1")
-          .from(".hero-cards", { y: 50, rotate: 8, opacity: 0, duration: 1.2 }, "<0.1")
-          .from(".hero-scroll", { opacity: 0, y: -8, duration: 0.8 }, "-=0.4");
-
-        return () => split.revert();
-      });
-
-      // On scroll the three beats spread apart like a step to the side.
-      mm.add("(min-width: 640px) and (prefers-reduced-motion: no-preference)", () => {
-        gsap.to(".cha", {
-          x: (i: number) => [-1, 0, 1][i] * 24,
-          ease: "none",
-          scrollTrigger: { trigger: ".cha-row", start: "top 60%", end: "bottom top", scrub: 0.6 },
+        // One calm entrance: the hero fades up as a whole, nothing bounces or stretches.
+        gsap.from([".hero-lead", ".hero-sub", ".cha-row", ".hero-picker", ".hero-cards", ".hero-scroll"], {
+          y: 18,
+          opacity: 0,
+          duration: 0.9,
+          stagger: 0.08,
+          ease: "power2.out",
+          delay: INTRO_DELAY,
         });
       });
     },
@@ -109,7 +82,7 @@ export default function Hero() {
               Better rates,
               <br className="hidden lg:block" /> easy as
             </span>
-            <span className="sr-only">Cha Cha Cha.</span>
+            <span className="sr-only"> Cha Cha Cha.</span>
           </h1>
           <div className="lg:max-w-[22rem] lg:pb-2 xl:pt-4">
             <p className="hero-sub text-[0.9375rem] leading-relaxed text-slate sm:text-lg">
@@ -133,7 +106,7 @@ export default function Hero() {
 
         {/* A quiet cue that there is more below. */}
         <a
-          href="#main-content"
+          href="#statement-title"
           onClick={(e) => {
             e.preventDefault();
             window.scrollBy({ top: window.innerHeight * 0.85, behavior: "smooth" });

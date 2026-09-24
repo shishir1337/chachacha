@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import clsx from "clsx";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { ArrowUpRight, Plus } from "lucide-react";
 import { allProducts, categories } from "@/lib/content";
@@ -21,7 +21,48 @@ export default function Coverage() {
   const CurrentIcon = coverIcons[current.slug];
   const groups = filter === ALL ? categories : categories.filter((c) => c.name === filter);
 
+  const listRef = useRef<HTMLDivElement>(null);
+  // Rows slide around while a filter animates; ignore scroll tracking until they settle.
+  const settleUntil = useRef(0);
+
+  // On desktop the row crossing the middle of the screen becomes active as you scroll,
+  // so the preview keeps up even if you never hover. Phones open rows by tap instead.
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    if (!mq.matches || !listRef.current) return;
+    const list = listRef.current;
+    let raf = 0;
+    const pick = () => {
+      raf = 0;
+      if (performance.now() < settleUntil.current) return;
+      const r = list.getBoundingClientRect();
+      const mid = window.innerHeight / 2;
+      // Only follow the scroll while the list is actually passing the middle of the screen.
+      if (r.top > mid || r.bottom < mid) return;
+      let best: HTMLElement | null = null;
+      let bestD = Infinity;
+      list.querySelectorAll<HTMLElement>("li[data-slug]").forEach((row) => {
+        const b = row.getBoundingClientRect();
+        const d = Math.abs(b.top + b.height / 2 - mid);
+        if (d < bestD) {
+          bestD = d;
+          best = row;
+        }
+      });
+      if (best) setActive((best as HTMLElement).dataset.slug!);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(pick);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [filter]);
+
   const chooseFilter = (name: string) => {
+    settleUntil.current = performance.now() + 900;
     setFilter(name);
     const first = (name === ALL ? categories : categories.filter((c) => c.name === name))[0].products[0];
     setActive(first.slug);
@@ -79,7 +120,7 @@ export default function Coverage() {
 
         <div className="mt-10 grid gap-10 lg:mt-14 lg:grid-cols-[7fr_5fr] lg:gap-16">
           {/* list */}
-          <div className="space-y-12">
+          <div ref={listRef} className="space-y-12">
             <AnimatePresence mode="popLayout" initial={false}>
               {groups.map((cat) => (
                 <motion.div
@@ -99,7 +140,7 @@ export default function Coverage() {
                       const on = p.slug === active;
                       const Icon = coverIcons[p.slug];
                       return (
-                        <li key={p.slug} className="border-b border-ink/15">
+                        <li key={p.slug} data-slug={p.slug} className="border-b border-ink/15">
                           <button
                             type="button"
                             aria-expanded={on}
