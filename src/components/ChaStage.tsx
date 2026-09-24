@@ -133,10 +133,10 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
         spring(w.g, pointer.active ? 720 + 80 * inf[i] : 760, dt, 90, 16);
         spring(w.lift, pointer.active ? -3 * inf[i] : -4 * w.boost, dt, 120, 16);
         const lean = pointer.active && centers[i] ? Math.max(-1, Math.min(1, (pointer.x - centers[i].x) / centers[i].w)) : 0;
-        spring(w.rot, 0.8 * lean * inf[i], dt, 90, 16);
+        spring(w.rot, 0, dt, 90, 16);
+        void lean;
         const el = inners.current[i];
         if (el) {
-          el.style.fontVariationSettings = `"wdth" ${w.w.x.toFixed(1)}, "wght" ${Math.min(900, w.g.x).toFixed(0)}`;
           el.style.transform = `translateY(${w.lift.x.toFixed(2)}%) rotate(${w.rot.x.toFixed(2)}deg)`;
         }
       });

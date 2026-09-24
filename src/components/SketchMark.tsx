@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "motion/react";
 
 /**
- * The footer wordmark: "ChaCha" in a brush script beside "Insurance", in soft, quiet tones.
- * The brush face comes from --font-brush (a stand-in until Haydon Brush is licensed).
+ * The footer wordmark: "ChaCha Insurance" in the site face, in soft, quiet tones.
  */
 export default function SketchMark() {
   const svg = useRef<SVGSVGElement>(null);
@@ -38,17 +37,14 @@ export default function SketchMark() {
       transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
     >
       <g className="mark">
-        <text x="0" y="200" fontSize="220" fill="rgb(208 20 44 / 0.22)" style={{ fontFamily: "var(--font-brush), cursive" }}>
-          ChaCha
-        </text>
         <text
-          x="690"
+          x="0"
           y="200"
-          fontSize="118"
-          fill="rgb(29 26 32 / 0.1)"
-          style={{ fontFamily: "var(--font-mona), system-ui, sans-serif", fontWeight: 800, letterSpacing: "-0.03em" }}
+          fontSize="200"
+          style={{ fontFamily: "var(--font-mona), system-ui, sans-serif", fontWeight: 800, letterSpacing: "-0.045em" }}
         >
-          Insurance
+          <tspan fill="rgb(208 20 44 / 0.2)">ChaCha</tspan>
+          <tspan fill="rgb(29 26 32 / 0.09)"> Insurance</tspan>
         </text>
       </g>
     </motion.svg>

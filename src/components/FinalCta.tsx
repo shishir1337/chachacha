@@ -44,16 +44,6 @@ export default function FinalCta() {
             scrollTrigger: { trigger: root.current, start: "top bottom", end: "top 25%", scrub: true },
           },
         );
-        gsap.fromTo(
-          ".cta-word",
-          { fontVariationSettings: '"wdth" 75' },
-          {
-            fontVariationSettings: '"wdth" 125',
-            stagger: 0.1,
-            ease: "none",
-            scrollTrigger: { trigger: root.current, start: "top 80%", end: "top 20%", scrub: true },
-          },
-        );
       });
     },
     { scope: root },

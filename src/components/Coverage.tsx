@@ -162,10 +162,9 @@ export default function Coverage() {
                             <span className="min-w-0 flex-1">
                               <span
                                 className={clsx(
-                                  "font-display block text-[clamp(1.75rem,3.4vw,2.75rem)] leading-none font-semibold tracking-[-0.03em] transition-[color,font-variation-settings] duration-500 ease-[var(--ease-out-expo)]",
+                                  "font-display block text-[clamp(1.75rem,3.4vw,2.75rem)] leading-none font-semibold tracking-[-0.03em] transition-colors duration-500 ease-[var(--ease-out-expo)]",
                                   on ? "text-ink" : "text-ink/35 group-hover:text-ink/70",
                                 )}
-                                style={{ fontVariationSettings: `"wdth" ${on ? 118 : 100}` }}
                               >
                                 {p.name}
                               </span>
