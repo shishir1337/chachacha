@@ -583,12 +583,76 @@ const builds: Record<string, Build> = {
   },
 
   "flood-insurance": (tl, q, g, w) => {
-    tl.fromTo(q(".s-flood"), { height: 0 }, { height: g.H * 0.36, duration: 1.4, ease: "sine.inOut" })
-      .to(q(".s-wave"), { xPercent: -50, duration: 3.6, ease: "none" }, 0)
-      .to(w.els, { yPercent: -7, rotation: (i: number) => [-2, 1.5, -1.5][i], duration: 1.4, ease: "sine.inOut", transformOrigin: "50% 100%", stagger: 0.1 }, 0.2)
-      .to(w.els, { yPercent: -4, rotation: (i: number) => [1, -1, 1][i], duration: 0.9, ease: "sine.inOut" }, 1.6)
-      .to(q(".s-flood"), { height: 0, duration: 1.2, ease: "sine.inOut" }, 2.4)
-      .to(w.els, { yPercent: 0, rotation: 0, duration: 1.1, ease: "sine.inOut" }, 2.45);
+    // Water rises until about 60% of the letters are under it.
+    const stage = (q(".s-flood")[0] as HTMLElement).parentElement!.parentElement!;
+    const sr = stage.getBoundingClientRect();
+    const mr = w.els[1].getBoundingClientRect();
+    const fs = parseFloat(getComputedStyle(w.els[1]).fontSize);
+    const capTop = mr.top - sr.top + fs * 0.18;
+    const base = capTop + fs * 0.72;
+    const level = base - (base - capTop) * 0.6;
+    const depth = g.H - level + 8; // the wave crest sits in the top 16px of the water
+    const RISE = 1.6;
+    const DRAIN = 3.4;
+
+    tl.fromTo(q(".s-flood"), { height: 0 }, { height: depth, duration: RISE, ease: "sine.inOut" })
+      .to(q(".s-wave"), { xPercent: -50, duration: 4.6, ease: "none" }, 0);
+
+    // The letters sink a little as the water comes up, then bob, each at its own rhythm.
+    w.els.forEach((el, i) => {
+      const sink = fs * (0.05 + i * 0.012);
+      const bob = fs * 0.022;
+      const period = 0.55 + i * 0.12;
+      tl.to(el, { y: sink, rotation: [-2, 1.6, -1.4][i], duration: RISE, ease: "sine.inOut", transformOrigin: "50% 60%" }, 0.2);
+      // a whole number of half-swings that always finishes before the water drains
+      const swings = Math.max(1, Math.floor((DRAIN - RISE - 0.2) / period));
+      tl.to(el, { y: sink - bob, rotation: [1.2, -1.4, 1.6][i], duration: period, ease: "sine.inOut", yoyo: true, repeat: swings - 1 }, RISE + 0.2);
+    });
+
+    // Air bubbles escape from the letters and pop at the surface.
+    const bubbles = q(".s-bubble") as HTMLElement[];
+    const x0 = w.cx[0] - fs * 0.7;
+    const x1 = w.cx[2] + fs * 0.7;
+    bubbles.forEach((el, i) => {
+      const size = fs * (0.035 + Math.random() * 0.04);
+      const x = x0 + Math.random() * (x1 - x0);
+      const startY = level + (base - level) * (0.45 + Math.random() * 0.5);
+      const t = 1.0 + (i / bubbles.length) * 2.0 + Math.random() * 0.2;
+      const rise = 0.7 + Math.random() * 0.5;
+      gsap.set(el, { width: size, height: size, x: x - size / 2, y: startY, opacity: 0, scale: 0.6 });
+      tl.to(el, { opacity: 0.9, scale: 1, duration: 0.15 }, t)
+        .to(el, { y: level - size * 0.4, duration: rise, ease: "power1.in" }, t)
+        .to(el, { x: `+=${(Math.random() - 0.5) * fs * 0.12}`, duration: rise / 2, yoyo: true, repeat: 1, ease: "sine.inOut" }, t)
+        .to(el, { scale: 1.9, opacity: 0, duration: 0.18, ease: "power1.out" }, t + rise);
+    });
+
+    // Ripples spread on the surface where each word meets the water.
+    const ripples = q(".s-ripple") as HTMLElement[];
+    ripples.forEach((el, i) => {
+      const k = i % 3;
+      const wdt = fs * 0.9;
+      gsap.set(el, { width: wdt, height: wdt * 0.18, x: w.cx[k] - wdt / 2, y: level - wdt * 0.09 + 6, opacity: 0, scale: 0.3 });
+      const t = RISE - 0.2 + Math.floor(i / 3) * 0.9 + k * 0.12;
+      tl.fromTo(el, { opacity: 0.7, scale: 0.3 }, { opacity: 0, scale: 1.5, duration: 1.2, ease: "power2.out", immediateRender: false }, t);
+    });
+
+    // The water drains and the letters rise back up, dripping.
+    tl.to(q(".s-flood"), { height: 0, duration: 1.3, ease: "sine.inOut" }, DRAIN).to(
+      w.els,
+      { y: 0, rotation: 0, duration: 1.1, ease: "power2.out" },
+      DRAIN + 0.15,
+    );
+    const drips = q(".s-drip") as HTMLElement[];
+    drips.forEach((el, i) => {
+      const k = i % 3;
+      const size = fs * 0.045;
+      const x = w.cx[k] + (Math.floor(i / 3) - 0.5) * fs * 0.5;
+      gsap.set(el, { width: size, height: size * 1.35, x: x - size / 2, y: base - size, opacity: 0 });
+      const t = DRAIN + 0.9 + Math.random() * 0.4;
+      tl.to(el, { opacity: 0.85, duration: 0.1 }, t)
+        .to(el, { y: `+=${fs * 0.3}`, duration: 0.45, ease: "power2.in" }, t)
+        .to(el, { opacity: 0, duration: 0.15 }, t + 0.35);
+    });
   },
 
   "life-insurance": (tl, q, g, w) => {
@@ -779,10 +843,10 @@ function Markup({ kind }: { kind: string }) {
     </svg>
   );
   const wave = (
-    <svg className="s-wave absolute -top-3 left-0 h-4 w-[200%]" viewBox="0 0 200 8" preserveAspectRatio="none">
+    <svg className="s-wave absolute top-0 left-0 h-4 w-[200%]" viewBox="0 0 200 8" preserveAspectRatio="none">
       <path
         d={`M0 4 ${Array.from({ length: 20 }, (_, i) => `Q ${i * 10 + 2.5} 0, ${i * 10 + 5} 4 T ${i * 10 + 10} 4`).join(" ")} V8 H0 Z`}
-        fill="rgb(27 107 102 / 0.14)"
+        fill="rgb(27 107 102 / 0.35)"
       />
     </svg>
   );
@@ -878,9 +942,30 @@ function Markup({ kind }: { kind: string }) {
       );
     case "flood-insurance":
       return (
-        <div className="sc s-flood absolute inset-x-0 bottom-0 z-20 h-0 bg-teal/12">
-          {wave}
-        </div>
+        <>
+          <div
+            className="sc s-flood absolute inset-x-0 bottom-0 z-20 h-0 overflow-hidden"
+            style={{
+              background: "linear-gradient(to bottom, transparent 16px, rgb(27 107 102 / 0.35) 16px, rgb(27 107 102 / 0.3) 55%, rgb(27 107 102 / 0))",
+              // looking through water softens what is under it
+              backdropFilter: "blur(1.4px)",
+              WebkitBackdropFilter: "blur(1.4px)",
+              maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
+              WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
+            }}
+          >
+            {wave}
+          </div>
+          {Array.from({ length: 14 }, (_, i) => (
+            <span key={`b${i}`} className="sc s-bubble absolute top-0 left-0 z-30 rounded-full border border-white/80 bg-white/25" style={{ opacity: 0 }} />
+          ))}
+          {Array.from({ length: 6 }, (_, i) => (
+            <span key={`r${i}`} className="sc s-ripple absolute top-0 left-0 z-30 rounded-[50%] border border-teal/60" style={{ opacity: 0 }} />
+          ))}
+          {Array.from({ length: 6 }, (_, i) => (
+            <span key={`d${i}`} className="sc s-drip absolute top-0 left-0 z-30 rounded-[50%_50%_50%_50%/60%_60%_40%_40%] bg-teal/50" style={{ opacity: 0 }} />
+          ))}
+        </>
       );
     case "life-insurance":
       return (

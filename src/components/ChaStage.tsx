@@ -226,7 +226,7 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
           className="[stroke-width:var(--roof-w)]"
         />
       </svg>
-      <p className="font-display relative z-10 -mx-[0.06em] flex items-baseline gap-x-[0.16em] overflow-hidden px-[0.06em] pt-[0.12em] pb-[0.04em] text-[min(13vw,17vh,11rem)] xl:text-[min(13vw,17vh,11rem,calc((min(100vw,88rem)_-_24.75rem)/6.75))] leading-[0.9] font-bold tracking-[-0.045em] text-ink">
+      <p className="font-display relative z-10 -mx-[0.06em] flex items-baseline gap-x-[0.16em] overflow-hidden px-[0.06em] pt-[0.12em] pb-[0.04em] text-[min(13vw,17vh,11rem)] xl:text-[min(13vw,17vh,11rem,calc((min(100vw,88rem)_-_24.75rem)/6.75))] leading-[0.9] font-bold tracking-[-0.045em] text-red">
         {WORDS.map((word, i) => (
           <span
             key={i}
