@@ -1,16 +1,74 @@
 "use client";
 
 import clsx from "clsx";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { coverIcons as icons } from "@/lib/icons";
 import { allProducts } from "@/lib/content";
 import { RevealText } from "./motion";
 import { Button, Roof } from "./ui";
 
-
-
 const spring = { type: "spring", stiffness: 320, damping: 30 } as const;
+
+// Where each waiting cover floats, as % of the section: a loose column down each side.
+const SLOTS: [number, number][] = [
+  [6, 16], [93, 20], [13, 30], [86, 36], [5, 45], [94, 52], [14, 60], [87, 68], [6, 76], [93, 84], [13, 90],
+];
+
+/**
+ * Faint cover icons drifting in the side margins. Pick a cover and its icon flies in under the roof;
+ * remove it and it drifts back out. Wide screens only, where there is room.
+ */
+function FloatingCovers({ picked, roofRef }: { picked: string[]; roofRef: React.RefObject<HTMLDivElement | null> }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [geo, setGeo] = useState<{ w: number; h: number; rx: number; ry: number } | null>(null);
+
+  useEffect(() => {
+    const measure = () => {
+      const b = box.current?.getBoundingClientRect();
+      const r = roofRef.current?.getBoundingClientRect();
+      if (!b || !r) return;
+      setGeo({ w: b.width, h: b.height, rx: r.left + r.width / 2 - b.left, ry: r.top + r.height * 0.45 - b.top });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (box.current) ro.observe(box.current);
+    if (roofRef.current) ro.observe(roofRef.current);
+    return () => ro.disconnect();
+  }, [roofRef]);
+
+  return (
+    <div ref={box} aria-hidden className="pointer-events-none absolute inset-0 hidden xl:block">
+      {geo &&
+        allProducts.map((p, i) => {
+          const Icon = icons[p.slug];
+          const [sx, sy] = SLOTS[i % SLOTS.length];
+          const x = (sx / 100) * geo.w;
+          const y = (sy / 100) * geo.h;
+          const on = picked.includes(p.slug);
+          return (
+            <motion.div
+              key={p.slug}
+              className="absolute top-0 left-0"
+              style={{ x: x - 26, y: y - 26 }}
+              initial={false}
+              animate={
+                on
+                  ? { x: geo.rx - 26, y: geo.ry - 26, scale: 0.35, opacity: [1, 1, 0], transition: { duration: 0.9, ease: [0.65, 0, 0.35, 1], opacity: { times: [0, 0.75, 1], duration: 0.9 } } }
+                  : { x: x - 26, y: y - 26, scale: 1, opacity: [0, 1], transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] } }
+              }
+            >
+              <div className="animate-[bob_7s_ease-in-out_infinite]" style={{ animationDelay: `${i * -0.9}s`, animationDuration: `${6 + (i % 4)}s` }}>
+                <span className="grid size-[52px] place-items-center rounded-2xl bg-white/70 text-teal/60 shadow-[0_10px_30px_-18px_rgb(10_34_41/0.35)] ring-1 ring-ink/5 backdrop-blur-sm">
+                  <Icon className="size-5" strokeWidth={1.5} />
+                </span>
+              </div>
+            </motion.div>
+          );
+        })}
+    </div>
+  );
+}
 
 export default function BundleBuilder() {
   const [picked, setPicked] = useState<string[]>(["auto-insurance", "homeowners-insurance"]);
@@ -18,10 +76,12 @@ export default function BundleBuilder() {
     setPicked((cur) => (cur.includes(slug) ? cur.filter((s) => s !== slug) : [...cur, slug]));
   const covered = picked.map((slug) => allProducts.find((p) => p.slug === slug)!);
   const n = covered.length;
+  const roofRef = useRef<HTMLDivElement>(null);
 
   return (
     <section aria-labelledby="bundle-title" className="relative overflow-hidden bg-white py-28 sm:py-36 lg:py-44">
-      <div className="wrap">
+      <FloatingCovers picked={picked} roofRef={roofRef} />
+      <div className="wrap relative">
         <div className="mx-auto max-w-2xl text-center">
           <p className="inline-flex items-center gap-3 text-base font-semibold text-teal">
             <Roof className="h-4 w-10 text-red" />
@@ -42,7 +102,7 @@ export default function BundleBuilder() {
         <LayoutGroup>
           {/* The house: a roof that grows to cover everything chosen. */}
           <div className="mt-16 flex justify-center sm:mt-20">
-            <motion.div layout transition={spring} className="relative max-w-full px-3 pt-14 sm:px-6 sm:pt-20">
+            <motion.div ref={roofRef} layout transition={spring} className="relative max-w-full px-3 pt-14 sm:px-6 sm:pt-20">
               <motion.svg
                 layout
                 transition={spring}
