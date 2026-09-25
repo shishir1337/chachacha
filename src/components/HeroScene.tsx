@@ -782,16 +782,66 @@ const builds: Record<string, Build> = {
   },
 
   "business-insurance": (tl, q, g, w) => {
-    const blocks = q(".s-block");
-    const n = blocks.length;
-    blocks.forEach((b, i) => {
-      const w = g.W / n;
-      gsap.set(b, { x: i * w + w * 0.12, width: w * 0.76, height: g.H * [0.38, 0.62, 0.48, 0.74, 0.44, 0.66, 0.52, 0.36][i % 8] });
-    });
-    tl.fromTo(blocks, { scaleY: 0 }, { scaleY: 1, duration: 0.9, stagger: { each: 0.07, from: "center" }, ease: "power3.out" })
-      .to(w.els, { yPercent: -5, duration: 0.8, stagger: 0.08, ease: "power3.out" }, 0.2)
-      .to(w.els, { yPercent: 0, duration: 0.7, ease: "power2.inOut" }, 2.1)
-      .to(blocks, { scaleY: 0, duration: 0.7, stagger: { each: 0.05, from: "edges" }, ease: "power2.in" }, "+=1.4");
+    const roof = q(".__roof")[0] as SVGPathElement;
+    const home = roof.getAttribute("d")!;
+    const stage = roof.ownerSVGElement!.parentElement!;
+    const sr = stage.getBoundingClientRect();
+    const first = w.els[0].getBoundingClientRect();
+    const last = w.els[2].getBoundingClientRect();
+    const fs = parseFloat(getComputedStyle(w.els[1]).fontSize);
+    const capTop = first.top - sr.top + fs * 0.18;
+    const u = (px: number, py: number) => `${(((px - g.roofLeft) / g.roofW) * 800).toFixed(1)} ${g.toUnitY(py).toFixed(1)}`;
+
+    // A shopfront awning over the words: back edge, sloping front, scalloped valance.
+    const x0 = first.left - sr.left - fs * 0.06;
+    const x1 = last.right - sr.left + fs * 0.06;
+    const inset = fs * 0.14;
+    const top = capTop - fs * 0.5;
+    const front = capTop - fs * 0.14;
+    const dip = fs * 0.07;
+    const n = Math.max(6, Math.round((x1 - x0) / (fs * 0.34)));
+    const step = (x1 - x0) / n;
+    const scallops: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const xa = x1 - i * step;
+      const xb = xa - step;
+      scallops.push(`Q${u((xa + xb) / 2, front + dip * 2)} ${u(xb, front)}`);
+    }
+    const AWNING = `M${u(x0 + inset, top)} L${u(x1 - inset, top)} L${u(x1, front)} ${scallops.join(" ")} L${u(x0 + inset, top)}`;
+
+    // Stripes on the canopy, drawn in a matching overlay.
+    const stripes = q(".s-stripes path")[0] as SVGPathElement;
+    const lines: string[] = [];
+    for (let i = 1; i < n; i++) {
+      const xf = x0 + i * step;
+      const xt = x0 + inset + (i / n) * (x1 - x0 - 2 * inset);
+      lines.push(`M${u(xt, top)} L${u(xf, front)}`);
+    }
+    stripes.setAttribute("d", lines.join(" "));
+
+    // The hanging sign over the middle word.
+    const sign = q(".s-sign")[0] as HTMLElement;
+    const flip = q(".s-flip")[0] as HTMLElement;
+    const sw = fs * 0.62;
+    const sh = fs * 0.3;
+    const hang = fs * 0.07;
+    gsap.set(sign, { width: sw, height: sh + hang, x: w.cx[1] - sw / 2, y: front + dip, fontSize: fs * 0.13, transformOrigin: "50% 0%" });
+    gsap.set(q(".s-sign-card"), { height: sh, top: hang });
+    gsap.set(flip, { rotationY: 0, transformPerspective: 500 });
+
+    tl.to(roof, { morphSVG: AWNING, duration: 0.9, ease: "power3.inOut" }, 0.05)
+      .fromTo(stripes, { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0.85)
+      // the sign drops in and swings on its strings
+      .fromTo(sign, { opacity: 0, y: `-=${fs * 0.35}`, rotation: 0 }, { opacity: 1, y: front + dip, duration: 0.45, ease: "power2.in" }, 1.0)
+      .to(sign, { keyframes: [{ rotation: 7, duration: 0.25 }, { rotation: -5, duration: 0.3 }, { rotation: 2.5, duration: 0.3 }, { rotation: 0, duration: 0.3 }], ease: "sine.inOut" }, 1.45)
+      // Closed -> Open
+      .to(flip, { rotationY: 180, duration: 0.55, ease: "back.out(1.4)" }, 2.35)
+      .to(sign, { keyframes: [{ rotation: -4, duration: 0.2 }, { rotation: 2, duration: 0.25 }, { rotation: 0, duration: 0.25 }], ease: "sine.inOut" }, 2.5);
+    beat(tl, w, 2.7, -6);
+    // closing time
+    tl.to(sign, { y: `-=${fs * 0.3}`, opacity: 0, duration: 0.4, ease: "power2.in" }, 3.9)
+      .to(stripes, { opacity: 0, duration: 0.3 }, 4.0)
+      .to(roof, { morphSVG: home, duration: 0.9, ease: "power3.inOut" }, 4.15);
   },
 
   bundle: (tl, q, g, w) => {
@@ -1000,11 +1050,30 @@ function Markup({ kind }: { kind: string }) {
     case "business-insurance":
       return (
         <>
-          {Array.from({ length: 8 }, (_, i) => (
-            <span key={i} className="sc s-block absolute bottom-0 left-0 z-0 origin-bottom rounded-t-lg bg-mist/80">
-              <span className="absolute inset-x-[22%] top-[14%] h-[40%] bg-[repeating-linear-gradient(to_bottom,rgb(255_255_255/0.9)_0_5px,transparent_5px_14px)]" />
-            </span>
-          ))}
+          <svg
+            className="sc s-stripes absolute -top-[4%] left-[1%] h-[26%] w-[97%] overflow-visible"
+            viewBox="0 0 800 120"
+            preserveAspectRatio="none"
+            fill="none"
+            style={{ opacity: 0 }}
+          >
+            <path stroke="#d0142c" strokeOpacity="0.55" strokeLinecap="round" vectorEffect="non-scaling-stroke" className="[stroke-width:calc(var(--roof-w)*0.5)]" />
+          </svg>
+          <div className="sc s-sign absolute top-0 left-0 z-30" style={{ opacity: 0 }}>
+            {/* strings */}
+            <span className="absolute top-0 left-[22%] h-full w-[2px] origin-top -rotate-12 bg-ink/50" />
+            <span className="absolute top-0 right-[22%] h-full w-[2px] origin-top rotate-12 bg-ink/50" />
+            <div className="s-sign-card absolute inset-x-0 [perspective:500px]">
+              <div className="s-flip relative h-full w-full [transform-style:preserve-3d]">
+                <span className="font-display absolute inset-0 grid place-items-center rounded-[0.3em] border-2 border-ink/70 bg-white font-bold tracking-tight text-ink/70 [backface-visibility:hidden]">
+                  Closed
+                </span>
+                <span className="font-display absolute inset-0 grid [transform:rotateY(180deg)] place-items-center rounded-[0.3em] border-2 border-red bg-white font-bold tracking-tight text-red [backface-visibility:hidden]">
+                  Open
+                </span>
+              </div>
+            </div>
+          </div>
         </>
       );
     case "bundle":
@@ -1044,7 +1113,7 @@ export default function HeroScene({ kind, delay = 0 }: { kind: string; delay?: n
       const roofPath = stageEl.querySelector<SVGPathElement>(".hero-roof path");
       const local = gsap.utils.selector(root);
       const q = ((sel: string) => (sel === ".__roof" ? (roofPath ? [roofPath] : []) : local(sel))) as unknown as Q;
-      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance", "auto-insurance", "boat-insurance", "renters-insurance", "condo-insurance"].includes(kind);
+      const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance", "auto-insurance", "boat-insurance", "renters-insurance", "condo-insurance", "business-insurance"].includes(kind);
       gsap.set(q(".sc"), { opacity: 1 });
       const stage = root.current!.parentElement!;
       const sr = stage.getBoundingClientRect();
@@ -1078,7 +1147,7 @@ export default function HeroScene({ kind, delay = 0 }: { kind: string; delay?: n
     <div
       ref={root}
       aria-hidden
-      className={`pointer-events-none absolute inset-0 ${kind === "business-insurance" || kind === "homeowners-insurance" ? "z-0" : "z-20"}`}
+      className={`pointer-events-none absolute inset-0 ${kind === "homeowners-insurance" ? "z-0" : "z-20"}`}
       style={{ clipPath: "inset(-30% 0 0 0)" }}
     >
       <Markup kind={kind} />
