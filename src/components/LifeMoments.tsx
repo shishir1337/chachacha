@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { moments } from "@/lib/content";
 import ImageSlot from "./ImageSlot";
 import { RevealText } from "./motion";
+import { roofie } from "./Mascot";
 
 export default function LifeMoments() {
   const track = useRef<HTMLUListElement>(null);
@@ -74,8 +75,14 @@ export default function LifeMoments() {
       }, 650);
     };
     const onClick = (e: MouseEvent) => moved && e.preventDefault();
-    const onScroll = () =>
+    let lastLeft = el.scrollLeft;
+    const onScroll = () => {
       setEdges({ start: el.scrollLeft < 8, end: el.scrollLeft + el.clientWidth > el.scrollWidth - 8 });
+      // the uncle's eyes follow the cards
+      const d = el.scrollLeft - lastLeft;
+      lastLeft = el.scrollLeft;
+      if (Math.abs(d) > 2) roofie("look", d > 0 ? "right" : "left");
+    };
     const noNativeDrag = (e: Event) => e.preventDefault();
     el.addEventListener("dragstart", noNativeDrag);
     el.addEventListener("pointerdown", onDown);

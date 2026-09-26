@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "motion/react";
 import { Check, Minus } from "lucide-react";
 import { compareRows } from "@/lib/content";
+import { roofie } from "./Mascot";
 
 type Side = "captive" | "chacha";
 
@@ -20,6 +21,11 @@ export default function Compare() {
     const t = setTimeout(() => setSide("chacha"), 350);
     return () => clearTimeout(t);
   }, [inView, touched]);
+
+  // The uncle approves when the table shows the ChaCha side.
+  useEffect(() => {
+    if (side === "chacha" && inView) roofie("approve");
+  }, [side, inView]);
 
   const choose = (s: Side) => {
     setTouched(true);

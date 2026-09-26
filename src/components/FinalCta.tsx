@@ -7,6 +7,7 @@ import { useGSAP } from "@gsap/react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { ArrowUpRight } from "lucide-react";
 import { contact } from "@/lib/content";
+import { roofie } from "./Mascot";
 import { images } from "@/lib/images";
 import QuoteCard from "./QuoteCard";
 
@@ -21,12 +22,14 @@ export default function FinalCta() {
   const [open, setOpen] = useState(false);
 
   const openCard = () => {
+    roofie("form", "open");
     setOpen(true);
     // On small screens the card opens below the text, so bring it into view.
     if (window.innerWidth < 1024) setTimeout(() => panel.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 350);
   };
   const close = useCallback(() => {
     setOpen(false);
+    roofie("form", "close");
     setTimeout(() => trigger.current?.focus(), 450);
   }, []);
 

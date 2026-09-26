@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 import { contact, faqs } from "@/lib/content";
 import { Button } from "./ui";
 import { RevealText } from "./motion";
+import { roofie } from "./Mascot";
 
 export default function Faq() {
   const [open, setOpen] = useState<number | null>(0);
@@ -46,7 +47,10 @@ export default function Faq() {
                     id={`${id}-btn`}
                     aria-expanded={isOpen}
                     aria-controls={`${id}-panel`}
-                    onClick={() => setOpen(isOpen ? null : i)}
+                    onClick={() => {
+                      if (!isOpen) roofie("think");
+                      setOpen(isOpen ? null : i);
+                    }}
                     className="group flex w-full items-center justify-between gap-6 py-6 text-left"
                   >
                     <span

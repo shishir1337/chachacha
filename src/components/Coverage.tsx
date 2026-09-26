@@ -8,6 +8,7 @@ import { ArrowUpRight, Plus } from "lucide-react";
 import { allProducts, categories } from "@/lib/content";
 import { coverIcons } from "@/lib/icons";
 import ImageSlot from "./ImageSlot";
+import { roofie } from "./Mascot";
 import { Button } from "./ui";
 import { RevealText } from "./motion";
 
@@ -17,6 +18,10 @@ const productsWithCategory = categories.flatMap((c) => c.products.map((p) => ({ 
 export default function Coverage() {
   const [filter, setFilter] = useState(ALL);
   const [active, setActive] = useState(allProducts[0].slug);
+  // Roofie holds up the cover you are looking at.
+  useEffect(() => {
+    roofie("cover", active);
+  }, [active]);
   const current = productsWithCategory.find((p) => p.slug === active)!;
   const CurrentIcon = coverIcons[current.slug];
   const groups = filter === ALL ? categories : categories.filter((c) => c.name === filter);

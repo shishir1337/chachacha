@@ -7,6 +7,7 @@ import HeroPicker from "./HeroPicker";
 import { INTRO_DELAY } from "./motion";
 import ChaStage from "./ChaStage";
 import CoverCards from "./CoverCards";
+import { roofie } from "./Mascot";
 
 gsap.registerPlugin(useGSAP);
 
@@ -18,6 +19,7 @@ export default function Hero() {
   const pick = (v: string) => {
     setCover(v);
     setSceneKey((k) => k + 1);
+    roofie("pick", v);
   };
 
   useGSAP(

@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowUpRight, Check, HelpCircle, Layers, Loader2, X } from "
 import { allProducts, contact } from "@/lib/content";
 import { coverIcons } from "@/lib/icons";
 import { images } from "@/lib/images";
+import { roofie } from "./Mascot";
 
 const covers = [
   ...allProducts.map((p) => ({ value: p.slug, label: p.name, Icon: coverIcons[p.slug] })),
@@ -94,6 +95,7 @@ export default function QuoteCard({ onClose }: { onClose: () => void }) {
         body: JSON.stringify({ cover, ...f }),
       });
       setStatus(res.ok ? "done" : "error");
+      if (res.ok) roofie("form", "sent");
     } catch {
       setStatus("error");
     }

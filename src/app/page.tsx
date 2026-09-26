@@ -12,6 +12,7 @@ import Journal from "@/components/Journal";
 import FinalCta from "@/components/FinalCta";
 import Footer from "@/components/Footer";
 import { Cursor, Intro, ScrollProgress } from "@/components/motion";
+import Mascot from "@/components/Mascot";
 
 export default function Home() {
   return (
@@ -34,6 +35,7 @@ export default function Home() {
         <FinalCta />
       </main>
       <Footer />
+      <Mascot />
     </>
   );
 }

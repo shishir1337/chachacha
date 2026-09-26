@@ -6,6 +6,7 @@ import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { coverIcons as icons } from "@/lib/icons";
 import { allProducts } from "@/lib/content";
 import { RevealText } from "./motion";
+import { roofie } from "./Mascot";
 import { Button, Roof } from "./ui";
 
 const spring = { type: "spring", stiffness: 320, damping: 30 } as const;
@@ -72,8 +73,10 @@ function FloatingCovers({ picked, roofRef }: { picked: string[]; roofRef: React.
 
 export default function BundleBuilder() {
   const [picked, setPicked] = useState<string[]>(["auto-insurance", "homeowners-insurance"]);
-  const toggle = (slug: string) =>
+  const toggle = (slug: string) => {
+    if (!picked.includes(slug)) roofie("cheer", slug);
     setPicked((cur) => (cur.includes(slug) ? cur.filter((s) => s !== slug) : [...cur, slug]));
+  };
   const covered = picked.map((slug) => allProducts.find((p) => p.slug === slug)!);
   const n = covered.length;
   const roofRef = useRef<HTMLDivElement>(null);
@@ -102,7 +105,7 @@ export default function BundleBuilder() {
         <LayoutGroup>
           {/* The house: a roof that grows to cover everything chosen. */}
           <div className="mt-16 flex justify-center sm:mt-20">
-            <motion.div ref={roofRef} layout transition={spring} className="relative max-w-full px-3 pt-14 sm:px-6 sm:pt-20">
+            <motion.div ref={roofRef} data-roofie-house layout transition={spring} className="relative max-w-full px-3 pt-14 sm:px-6 sm:pt-20">
               <motion.svg
                 layout
                 transition={spring}
