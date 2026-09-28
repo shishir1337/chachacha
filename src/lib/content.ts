@@ -14,7 +14,7 @@ export const contact = {
 };
 
 export const nav = [
-  { label: "Insurance", href: "#coverage" },
+  { label: "Insurance", href: "/insurance" },
   { label: "About us", href: "/about-us" },
   { label: "Service", href: "/service" },
   { label: "Blog", href: "/blog" },
