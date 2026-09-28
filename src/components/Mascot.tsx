@@ -7,9 +7,16 @@ import { X } from "lucide-react";
 import { contact } from "@/lib/content";
 import { coverIcons } from "@/lib/icons";
 import { INTRO_DELAY } from "./motion";
+import { BRUSH_DROP } from "./SketchMark";
 
 /** Other parts of the page talk to the uncle with small window events. */
-export const roofie = (name: "cover" | "cheer" | "pick" | "form" | "think" | "approve" | "look", detail?: string) =>
+/**
+ * Timing of the cha-cha-cha basic, shared with the hero words so they hop on his "cha-cha-cha".
+ * About 120 BPM (a beat is half a second); he starts on count 2 after a short lead-in.
+ */
+export const DANCE = { start: 0.35, beat: 0.5 };
+
+export const roofie = (name: "cover" | "cheer" | "pick" | "form" | "think" | "approve" | "look" | "dance", detail?: string) =>
   window.dispatchEvent(new CustomEvent(`roofie:${name}`, { detail }));
 
 /** Tells the footer wordmark to show (or hide) the uncle asleep inside its "C". */
@@ -33,6 +40,8 @@ type Station = {
   surface?: string;
   /** only look for text and buttons inside the anchor (for content that scrolls on its own) */
   scopeAnchor?: boolean;
+  /** his spot moves on its own (the progress line): he follows it and is never re-placed */
+  follow?: boolean;
 };
 
 type Box = { l: number; t: number; r: number; b: number };
@@ -77,7 +86,7 @@ function insideTheC(_: DOMRect, el: Element): Pt | null {
   const m = text.getScreenCTM();
   if (!m) return null;
   const em = 200 * m.a;
-  const baseline = 200 * m.d + m.f;
+  const baseline = (200 + BRUSH_DROP) * m.d + m.f;
   return { x: (box.x + box.width * 0.5) * m.a + m.e, y: baseline - em * 0.14 };
 }
 
@@ -94,6 +103,7 @@ const STATIONS: Station[] = [
       return { x: Math.max(track.left + 40, r.right), y: track.top };
     },
     pose: "stand",
+    follow: true,
   },
   {
     key: "moments",
@@ -283,13 +293,111 @@ export default function Mascot() {
           .to(flip.current, { x: 0, duration: 0.2 });
       });
 
+    /** stop whatever gesture is playing, so a new one can start cleanly */
+    const interrupt = () => {
+      if (!busy.current) return;
+      gsap.killTweensOf([armL.current, armR.current, legL.current, legR.current, flip.current, body.current, shinL.current, shinR.current]);
+      gsap.set(flip.current, { rotation: 0, x: 0, y: 0 });
+      gsap.set(body.current, { rotation: 0, y: 0, scaleY: 1 });
+      busy.current = false;
+    };
+
     // Eyes: when something is happening on the page he looks at it instead of the cursor for a moment.
+    // The eyes only ever move through these two setters. Any other x/y tween on them (or killing
+    // their tweens) breaks quickTo, which then warns "x not eligible for reset" on every mouse move.
+    const ex = gsap.quickTo(eyes.current, "x", { duration: 0.35 });
+    const ey = gsap.quickTo(eyes.current, "y", { duration: 0.35 });
     let eyesHeld = 0;
     const lookAt = (x: number, y: number, secs: number) => {
       eyesHeld = performance.now() + secs * 1000;
-      gsap.killTweensOf(eyes.current, "x,y");
-      gsap.to(eyes.current, { x: x * facing, y, duration: 0.35, ease: "power2.out" });
+      ex(x * facing);
+      ey(y);
     };
+
+    /*
+     * The real cha-cha-cha basic, counted "2, 3, cha-cha-1":
+     * a rock step and recover, then a triple chassé to the side (side, close, side) on 4-and-1,
+     * then the same the other way. Seen from the front, a rock step is a weight change: he shifts over
+     * the standing leg and the free leg reaches out. The hip sway (Cuban motion) comes from the knees,
+     * so every step has a small dip and the body tilts over the standing leg.
+     */
+    let dancing = false;
+    const danceBasic = (tl: gsap.core.Timeline) => {
+      const b = DANCE.beat;
+      const t0 = DANCE.start;
+      const k = 1.3; // how far he travels, in svg units per unit below
+      // dance hold: one arm out, one arm bent in front
+      tl.to(armL.current, { rotation: 62, duration: 0.3, ease: "power2.out" }, 0).to(armR.current, { rotation: -30, duration: 0.3, ease: "power2.out" }, 0);
+      const step = (at: number, x: number, tilt: number, free: Element | null, reach: number, dur: number) => {
+        tl.to(flip.current, { x: x * k, duration: dur, ease: "power2.inOut" }, at)
+          .to(body.current, { rotation: tilt, svgOrigin: "60 120", duration: dur, ease: "sine.inOut" }, at)
+          .to(body.current, { y: 1.8, duration: dur * 0.4, ease: "power1.out" }, at)
+          .to(body.current, { y: 0, duration: dur * 0.6, ease: "power1.in" }, at + dur * 0.4);
+        if (free) tl.to(free, { rotation: reach, duration: dur * 0.8, ease: "power2.out" }, at);
+      };
+      const L = legL.current;
+      const R = legR.current;
+      // first half: rock onto the left foot, recover, chassé to the right
+      step(t0, -4, -3.5, R, -13, b * 0.8); //                 2
+      step(t0 + b, 0, 2, R, 0, b * 0.8); //                   3
+      step(t0 + 2 * b, 5, 3, R, -14, b * 0.45); //            cha (4)
+      step(t0 + 2.5 * b, 8, 1, R, 0, b * 0.45); //            cha (&)
+      step(t0 + 3 * b, 13, 3.5, R, -10, b * 0.6); //          cha (1)
+      tl.to(R, { rotation: 0, duration: b * 0.3 }, t0 + 3.6 * b)
+        .to(armR.current, { rotation: -62, duration: b * 0.5, ease: "power2.out" }, t0 + 3 * b)
+        .to(armR.current, { rotation: -30, duration: b * 0.5, ease: "power2.inOut" }, t0 + 3.6 * b);
+      // second half: rock onto the right foot, recover, chassé back to the left
+      step(t0 + 4 * b, 17, 3.5, L, 13, b * 0.8); //           2
+      step(t0 + 5 * b, 13, -2, L, 0, b * 0.8); //             3
+      step(t0 + 6 * b, 8, -3, L, 14, b * 0.45); //            cha
+      step(t0 + 6.5 * b, 5, -1, L, 0, b * 0.45); //           cha
+      step(t0 + 7 * b, 0, -3.5, L, 10, b * 0.6); //           cha
+      tl.to(L, { rotation: 0, duration: b * 0.3 }, t0 + 7.6 * b)
+        .to(armL.current, { rotation: 95, duration: b * 0.5, ease: "power2.out" }, t0 + 7 * b)
+        .to(armL.current, { rotation: 62, duration: b * 0.5, ease: "power2.inOut" }, t0 + 7.6 * b);
+      // and a finish on the next "1": arms up, a little hop
+      const end = t0 + 8 * b;
+      tl.to(armL.current, { rotation: 135, duration: 0.25, ease: "back.out(2)" }, end)
+        .to(armR.current, { rotation: -135, duration: 0.25, ease: "back.out(2)" }, end)
+        .to(body.current, { rotation: 0, y: 0, duration: 0.2 }, end)
+        .to(flip.current, { y: -7, duration: 0.2, ease: "power2.out" }, end)
+        .to(flip.current, { y: 0, duration: 0.3, ease: "bounce.out" }, end + 0.2)
+        .to([armL.current, armR.current], { rotation: 0, duration: 0.35, ease: "power2.inOut" }, end + 0.8);
+      return end + 1.15;
+    };
+    // Tapping the words asks for a dance. If he is still walking or parachuting in,
+    // he dances as soon as he lands; the words start hopping when he starts ("roofie:dancing").
+    let wantDance = false;
+    const onDance = () => {
+      if (dancing) return;
+      if (travel || napping) {
+        wantDance = !napping;
+        return;
+      }
+      startDance();
+    };
+    const startDance = () => {
+      wantDance = false;
+      interrupt();
+      dancing = true;
+      busy.current = true;
+      lastActive = performance.now();
+      const wasSitting = pose === "sit";
+      const at = key;
+      applyPose("stand");
+      window.dispatchEvent(new CustomEvent("roofie:dancing"));
+      lookAt(-1.5, -0.8, 5.5);
+      const tl = gsap.timeline({
+        onComplete: () => {
+          dancing = false;
+          busy.current = false;
+          if (wasSitting && key === at) applyPose("sit");
+          restArms(0.25);
+        },
+      });
+      tl.set({}, {}, danceBasic(tl));
+    };
+    window.addEventListener("roofie:dance", onDance);
 
     // A small speech bubble ("?", "Good call") that floats up and fades.
     const say = (text: string) => setLine({ text, id: Date.now() });
@@ -297,12 +405,8 @@ export default function Mascot() {
     // When a cover is picked in the hero, he watches its little scene on the letters
     // and responds in a quiet, fitting way. Nothing pops out at the visitor.
     const react = (slug: string) => {
-      if (busy.current) {
-        gsap.killTweensOf([armL.current, armR.current, flip.current, body.current, shinL.current, shinR.current]);
-        gsap.set(flip.current, { rotation: 0, x: 0, y: 0 });
-        gsap.set(body.current, { rotation: 0, scaleY: 1 });
-        busy.current = false;
-      }
+      if (dancing) return;
+      interrupt();
       const rest = pose === "sit" ? -14 : 0;
       const nod = (tl: gsap.core.Timeline, at: number | string) =>
         tl.to(body.current, { rotation: 3, svgOrigin: "60 120", duration: 0.18, yoyo: true, repeat: 1, ease: "sine.inOut" }, at);
@@ -311,7 +415,9 @@ export default function Mascot() {
       switch (slug) {
         case "auto-insurance":
           // follows the car along the letters with his eyes, then a nod as it parks
-          gsap.fromTo(eyes.current, { x: -1.8 * facing }, { x: 1.6 * facing, duration: 2.4, ease: "none", delay: 1.0 });
+          eyesHeld = performance.now() + 3600;
+          const sweep = { v: -1.8 };
+          gsap.to(sweep, { v: 1.6, duration: 2.4, ease: "none", delay: 1.0, onUpdate: () => ex(sweep.v * facing) });
           return once((tl) => nod(tl, 3.4));
         case "boat-insurance":
           // shades his eyes like a sailor watching a boat go by
@@ -340,8 +446,8 @@ export default function Mascot() {
               .to([shinL.current, shinR.current], { rotation: 0, y: pose === "sit" ? -12.5 : 0, duration: 0.6, ease: "power2.inOut" }, 3.4),
           );
         case "umbrella-insurance":
-          // it rains on the letters, so up goes his umbrella too
-          showProp(umbrella.current, 3.2);
+          // he holds his own umbrella over his stack of policies
+          showProp(umbrella.current, 3.6);
           return once((tl) => tl.to(armR.current, { rotation: -20, duration: 0.25 }, 0.3).to(armR.current, { rotation: rest, duration: 0.3 }, 3.6));
         case "pet-insurance":
           // a small wave to the dog peeking over the words
@@ -378,14 +484,16 @@ export default function Mascot() {
               .to(armR.current, { rotation: rest, duration: 0.3 }, 3.4),
           );
         case "bundle":
-          return once((tl) =>
-            tl.to(armL.current, { rotation: -35, duration: 0.25 }, 1.2)
-              .to(armR.current, { rotation: 35, duration: 0.25 }, 1.2)
-              .to(armL.current, { rotation: -25, duration: 0.09, yoyo: true, repeat: 5 }, 1.5)
-              .to(armR.current, { rotation: 25, duration: 0.09, yoyo: true, repeat: 5 }, 1.5)
-              .to(armL.current, { rotation: pose === "sit" ? 14 : 0, duration: 0.3 }, 2.4)
-              .to(armR.current, { rotation: rest, duration: 0.3 }, 2.4),
-          );
+          // a nod for each pick, then a little clap once they're all under the roof
+          return once((tl) => {
+            [1.15, 1.57, 1.99].forEach((t) => nod(tl, t));
+            tl.to(armL.current, { rotation: -35, duration: 0.25 }, 3.1)
+              .to(armR.current, { rotation: 35, duration: 0.25 }, 3.1)
+              .to(armL.current, { rotation: -25, duration: 0.09, yoyo: true, repeat: 5 }, 3.4)
+              .to(armR.current, { rotation: 25, duration: 0.09, yoyo: true, repeat: 5 }, 3.4)
+              .to(armL.current, { rotation: pose === "sit" ? 14 : 0, duration: 0.3 }, 4.3)
+              .to(armR.current, { rotation: rest, duration: 0.3 }, 4.3);
+          });
         default:
           return once((tl) => nod(tl, 0.6));
       }
@@ -513,11 +621,10 @@ export default function Mascot() {
     const size = () => ({ w: el.offsetWidth, h: el.offsetHeight });
     const corner = () => {
       const { w, h } = size();
-      const m = wide.matches ? 24 : 12;
+      const m = wide.matches ? 24 : 10;
       return { x: window.innerWidth - w / 2 - m, y: window.innerHeight - m - h * (1 - look.rest) };
     };
-    // on phones there is no free corner, so when no spot is clear he waits just below the screen
-    const away = () => (wide.matches ? corner() : { x: window.innerWidth - size().w / 2 - 12, y: window.innerHeight + size().h + 24 });
+    const away = corner;
 
     // Obstacles are kept relative to the anchor so they stay right while the page scrolls,
     // and refreshed a few times a second for anything that moves on its own.
@@ -575,9 +682,20 @@ export default function Mascot() {
     };
 
     type Target = { st?: Station; spot: Pt; corner: boolean };
+    let lock: { key: string; dx: number; dy: number } | null = null;
+    /** fully on screen, below the header: good enough to take as a new spot */
+    const onScreen = (p: Pt, pose: Pose) => {
+      const { w, h } = size();
+      const top = p.y - h * (REST[pose] / 160);
+      return top > 40 && p.y < window.innerHeight + 4 && p.x > w * 0.3 && p.x < window.innerWidth - w * 0.3;
+    };
+    const unlock = () => void (lock = null);
+    window.addEventListener("resize", unlock);
     const pick = (): Target => {
       const vh = window.innerHeight;
       for (const s of STATIONS) {
+        // phones and tablets: he stays put in the corner and only leaves it for his nap in the footer
+        if (!wide.matches && !s.nap) continue;
         const a = document.querySelector(s.anchor);
         if (!a) continue;
         const sec = (a.closest("section, footer") ?? a) as HTMLElement;
@@ -586,8 +704,17 @@ export default function Mascot() {
         const ar = a.getBoundingClientRect();
         const p0 = s.spot(ar, a);
         if (!p0) break;
+        // Once he has a spot it stays locked to its anchor for as long as this section is in view:
+        // he scrolls away with it like the content does, and never flip-flops between spot and corner.
+        if (lock?.key === s.key) return { st: s, spot: { x: p0.x + lock.dx, y: p0.y + lock.dy }, corner: false };
+        if (s.follow) {
+          if (!onScreen(p0, s.pose)) return { st: s, spot: away(), corner: true };
+          lock = { key: s.key, dx: 0, dy: 0 };
+          return { st: s, spot: p0, corner: false };
+        }
         const p = s.nap ? (fits(silhouette(p0.x, p0.y, "stand")) ? p0 : null) : clearSpot(s, a, ar, p0);
         if (!p) return { st: s, spot: away(), corner: true };
+        lock = { key: s.key, dx: p.x - p0.x, dy: p.y - p0.y };
         return { st: s, spot: p, corner: false };
       }
       return { spot: away(), corner: true };
@@ -629,13 +756,24 @@ export default function Mascot() {
     };
 
     const tick = (_t: number, deltaMs: number) => {
+      if (wantDance && !travel && !dancing) startDance();
       const t = pick();
       const k = t.corner ? `corner:${t.st?.key ?? ""}` : t.st!.key;
       if (k !== key) {
         key = k;
         arrived = false;
         settle = 0;
+        if (lock && lock.key !== t.st?.key) lock = null;
+        if (travel?.para) {
+          // scrolled away before he landed: fold the parachute and walk instead
+          gsap.killTweensOf(chute.current);
+          gsap.set(chute.current, { opacity: 0 });
+          gsap.set(flip.current, { rotation: 0, y: 0 });
+          gsap.set([armL.current, armR.current], { rotation: 0 });
+          travel = null;
+        }
         setStation(t.st?.key ?? "");
+        el.dataset.spot = k;
         wake();
         if (lean !== 0) {
           lean = 0;
@@ -752,8 +890,6 @@ export default function Mascot() {
     });
 
     // ---- eyes follow the cursor, and he blinks ----
-    const ex = gsap.quickTo(eyes.current, "x", { duration: 0.35 });
-    const ey = gsap.quickTo(eyes.current, "y", { duration: 0.35 });
     const onPointer = (e: PointerEvent) => {
       poke();
       if (performance.now() < eyesHeld) return;
@@ -856,6 +992,7 @@ export default function Mascot() {
 
     return () => {
       gsap.ticker.remove(tick);
+      window.removeEventListener("resize", unlock);
       walk.kill();
       poseTl?.kill();
       nap(false);
@@ -863,6 +1000,7 @@ export default function Mascot() {
       window.removeEventListener("pointermove", onPointer);
       window.removeEventListener("roofie:cheer", onCheer);
       window.removeEventListener("roofie:pick", onPick);
+      window.removeEventListener("roofie:dance", onDance);
       window.removeEventListener("roofie:think", onThink);
       window.removeEventListener("roofie:approve", onApprove);
       window.removeEventListener("roofie:look", onLook);
@@ -919,7 +1057,7 @@ export default function Mascot() {
             type="button"
             data-roofie
             aria-label="Uncle Cha, the ChaCha mascot. Tap for help."
-            className="relative block h-[82px] w-[62px] rounded-2xl sm:h-[112px] sm:w-[84px]"
+            className="relative block h-[72px] w-[54px] rounded-2xl sm:h-[88px] sm:w-[66px] lg:h-[104px] lg:w-[78px] xl:h-[112px] xl:w-[84px] 2xl:h-[128px] 2xl:w-[96px]"
           >
             <svg viewBox="0 0 120 160" className="h-full w-full overflow-visible" strokeLinecap="round" strokeLinejoin="round">
               <g ref={flip}>
@@ -1024,8 +1162,14 @@ export default function Mascot() {
                   <path d="M55 77 Q60 80.5 65 77" stroke="#b86a55" strokeWidth="1.8" fill="none" />
                 </g>
 
-                {/* umbrella, for umbrella and flood */}
+                {/* umbrella insurance: his umbrella held over a small stack of policies */}
                 <g ref={umbrella} style={{ opacity: 0 }}>
+                  <g transform="rotate(-4 106 112)">
+                    <rect x="94" y="104" width="22" height="16" rx="2.5" fill="#fff" stroke="#c9cfd7" strokeWidth="1.2" />
+                    <rect x="96" y="99" width="22" height="16" rx="2.5" fill="#fff" stroke="#c9cfd7" strokeWidth="1.2" />
+                    <rect x="98" y="94" width="22" height="16" rx="2.5" fill="#fff" stroke="#9aa3ae" strokeWidth="1.2" />
+                    <path d="M102 104 L109 99 L116 104" stroke="#d0142c" strokeWidth="1.6" fill="none" />
+                  </g>
                   <path d="M88 14 L88 112 C 88 118, 81 118, 81 113" stroke="#fff" strokeWidth="4.5" fill="none" />
                   <path d="M88 14 L88 112 C 88 118, 81 118, 81 113" stroke="#3a3d45" strokeWidth="2.4" fill="none" />
                   <path d="M52 20 C 58 -4, 118 -4, 124 20 Q 115 13 106 20 Q 97 13 88 20 Q 79 13 70 20 Q 61 13 52 20 Z" fill="#d0142c" stroke="#fff" strokeWidth="2.5" paintOrder="stroke" />

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Mona_Sans, Hanken_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import SmoothScroll from "@/components/SmoothScroll";
 import "./globals.css";
 
@@ -13,6 +14,14 @@ const mona = Mona_Sans({
 const hanken = Hanken_Grotesk({
   variable: "--font-hanken",
   subsets: ["latin"],
+  display: "swap",
+});
+
+// The brand's signature face, used only for "ChaCha" / "Cha Cha Cha".
+// Personal-use licence: a commercial licence is needed before launch (see src/assets/fonts/haydon-brush/LICENSE.txt).
+const brush = localFont({
+  src: "../assets/fonts/haydon-brush/HaydonBrush.ttf",
+  variable: "--font-haydon",
   display: "swap",
 });
 
@@ -75,9 +84,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${mona.variable} ${hanken.variable} antialiased`}
+      className={`${mona.variable} ${hanken.variable} ${brush.variable} antialiased`}
     >
-      <body>
+      {/* extensions such as ColorZilla add attributes to <body> before React loads */}
+      <body suppressHydrationWarning>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         <a
           href="#main"

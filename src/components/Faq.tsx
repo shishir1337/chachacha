@@ -8,6 +8,7 @@ import { contact, faqs } from "@/lib/content";
 import { Button } from "./ui";
 import { RevealText } from "./motion";
 import { roofie } from "./Mascot";
+import { withBrand } from "./Brand";
 
 export default function Faq() {
   const [open, setOpen] = useState<number | null>(0);
@@ -59,7 +60,7 @@ export default function Faq() {
                         isOpen ? "text-teal" : "group-hover:text-teal",
                       )}
                     >
-                      {f.q}
+                      {withBrand(f.q)}
                     </span>
                     <span
                       aria-hidden

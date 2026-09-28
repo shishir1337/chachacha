@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
-import { Heart, LampFloor } from "lucide-react";
+import { Banknote, Check, Gavel, Heart, LampFloor } from "lucide-react";
 import { allProducts } from "@/lib/content";
 import { coverIcons } from "@/lib/icons";
 
@@ -44,16 +44,34 @@ const CANOPY_D =
 /** The roof lifted high, to make room for everything moving in underneath. */
 const LIFTED_D = "M6 112 C 150 78, 300 -40, 400 -74 C 500 -40, 650 78, 794 112";
 
+/** The roof settled snugly over a bundle. */
+const SETTLED_D = "M6 112 C 150 84, 300 -24, 400 -56 C 500 -24, 650 84, 794 112";
+/** Bundles the hero shows being put together, one per play. */
+const MIXES = [
+  ["auto-insurance", "homeowners-insurance", "pet-insurance"],
+  ["auto-insurance", "renters-insurance", "life-insurance"],
+  ["homeowners-insurance", "boat-insurance", "umbrella-insurance"],
+];
+let mixTurn = 0;
+
+/** Points along each roof path, sampled once: measuring a path is slow, and scenes ask for many heights. */
+const pathSamples = new Map<string, { x: number; y: number }[]>();
 /** Where a path sits vertically at x (both in roof units). */
 function pathYAt(d: string, x: number) {
-  const el = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  el.setAttribute("d", d);
-  const len = el.getTotalLength();
-  let best = el.getPointAtLength(0);
-  for (let l = 0; l <= len; l += 4) {
-    const pt = el.getPointAtLength(l);
-    if (Math.abs(pt.x - x) < Math.abs(best.x - x)) best = pt;
+  let pts = pathSamples.get(d);
+  if (!pts) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    el.setAttribute("d", d);
+    const len = el.getTotalLength();
+    pts = [];
+    for (let l = 0; l <= len; l += 4) {
+      const pt = el.getPointAtLength(l);
+      pts.push({ x: pt.x, y: pt.y });
+    }
+    pathSamples.set(d, pts);
   }
+  let best = pts[0];
+  for (const pt of pts) if (Math.abs(pt.x - x) < Math.abs(best.x - x)) best = pt;
   return best.y;
 }
 
@@ -214,7 +232,7 @@ function sofaPath(g: G, cx: number, top: number, SW: number, SH: number) {
   ].join(" ");
 }
 
-/** Height of the canopy (in roof units) at x, for rain to land on. */
+/** Height of the canopy (in roof units) at x, for things to land on. */
 const canopyY = (x: number) => {
   const t = (x - 400) / 250;
   return Math.abs(t) >= 1 ? 92 : 92 - 150 * Math.sqrt(1 - t * t);
@@ -749,36 +767,53 @@ const builds: Record<string, Build> = {
     gsap.set(shaft, { strokeDasharray: len, strokeDashoffset: len });
     gsap.set(tip, { strokeDasharray: 20, strokeDashoffset: 20 });
 
-    tl.to(roof, { morphSVG: CANOPY_D, duration: 1, ease: "power3.inOut" }, 0.05)
-      .to(tip, { strokeDashoffset: 0, duration: 0.25, ease: "power2.out" }, 0.85)
-      .to(shaft, { strokeDashoffset: 0, duration: 0.7, ease: "power2.inOut" }, 0.9);
+    // Every policy the umbrella reaches over lines up first, three each side of the handle...
+    const under = q(".s-under") as HTMLElement[];
+    const size = under[0].offsetWidth;
+    const slots = [222, 276, 330, 470, 524, 578];
+    under.forEach((el, i) => {
+      const pt = g.toPx(slots[i], 92);
+      gsap.set(el, { x: pt.x - size / 2, y: pt.y - size * 1.08, opacity: 0, scale: 0.6 });
+      tl.to(el, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, 0.1 + i * 0.08);
+    });
 
-    // Held in a hand: a gentle sway around the canopy tip.
+    // ...then the umbrella opens over all of them: one extra layer on top.
+    tl.to(roof, { morphSVG: CANOPY_D, duration: 1, ease: "power3.inOut" }, 0.45)
+      .to(tip, { strokeDashoffset: 0, duration: 0.25, ease: "power2.out" }, 1.25)
+      .to(shaft, { strokeDashoffset: 0, duration: 0.7, ease: "power2.inOut" }, 1.3);
+
+    // A lawsuit and a big bill come down and bounce off the canopy. The policies underneath stay put.
     const sway = [roofSvg, handleSvg];
     gsap.set(roofSvg, { svgOrigin: undefined, transformOrigin: `${top.x - g.roofLeft}px ${top.y - g.roofTop}px` });
     gsap.set(handleSvg, { transformOrigin: `${top.x}px ${top.y}px` });
-    tl.to(sway, { rotation: -2.5, duration: 0.7, ease: "sine.inOut" }, 1.5)
-      .to(sway, { rotation: 1.8, duration: 0.8, ease: "sine.inOut" })
-      .to(sway, { rotation: -0.8, duration: 0.7, ease: "sine.inOut" })
-      .to(sway, { rotation: 0, duration: 0.6, ease: "sine.out" });
-
-    // Rain arrives once the umbrella is open, and slides off the canopy.
-    q(".s-drop").forEach((d) => {
-      const ux = 170 + Math.random() * 460;
-      const start = g.toPx(ux, -260 - Math.random() * 160);
-      const hit = g.toPx(ux, canopyY(ux) - 6);
-      const t = 1.1 + Math.random() * 1.8;
-      gsap.set(d, { x: start.x, y: start.y, opacity: 0, scaleX: 1, scaleY: 1 });
-      tl.to(d, { opacity: 0.85, duration: 0.08 }, t)
-        .to(d, { y: hit.y, duration: 0.45, ease: "power2.in" }, t)
-        .to(d, { scaleY: 0.15, scaleX: 5, x: `+=${ux < 400 ? -6 : 6}`, opacity: 0, duration: 0.22, ease: "power2.out" }, t + 0.45);
+    const hits = q(".s-hit") as HTMLElement[];
+    const lanes = [300, 505, 370];
+    hits.forEach((el, i) => {
+      const ux = lanes[i];
+      const dir = ux < 400 ? -1 : 1;
+      const land = g.toPx(ux, canopyY(ux));
+      const hs = el.offsetWidth;
+      const at = 2.0 + i * 0.55;
+      const hx = land.x - hs / 2;
+      const hy = land.y - hs * 0.95;
+      gsap.set(el, { x: hx, y: -g.H * 0.26, opacity: 0, rotation: dir * -12 });
+      tl.to(el, { opacity: 1, duration: 0.15 }, at)
+        .to(el, { y: hy, duration: 0.5, ease: "power2.in" }, at)
+        // bounce away, off the side of the dome
+        .to(el, { x: hx + dir * g.W * 0.12, rotation: dir * 150, duration: 0.8, ease: "power1.out" }, at + 0.5)
+        .to(el, { keyframes: [{ y: hy - hs * 0.9, duration: 0.28, ease: "power2.out" }, { y: hy + hs * 2.6, duration: 0.52, ease: "power2.in" }] }, at + 0.5)
+        .to(el, { opacity: 0, duration: 0.3 }, at + 0.95)
+        // the canopy gives a little under the knock
+        .to(sway, { rotation: -dir * 2.2, duration: 0.12, ease: "power2.out" }, at + 0.5)
+        .to(sway, { rotation: 0, duration: 0.6, ease: "elastic.out(1, 0.45)" }, at + 0.62);
     });
-    // Everyone underneath stays dry: a small, happy one-two-three.
-    beat(tl, w, 2.4, -6);
-    tl.to(shaft, { strokeDashoffset: len, duration: 0.45, ease: "power2.in" }, 3.9)
-      .to(tip, { strokeDashoffset: 20, duration: 0.2, ease: "power2.in" }, 4.2)
-      .to(handleSvg, { opacity: 0, duration: 0.25 }, 4.3)
-      .to(roof, { morphSVG: home, duration: 0.9, ease: "power3.inOut" }, 4.25);
+    // Everyone underneath is fine: a small, happy one-two-three.
+    beat(tl, w, 3.75, -6);
+    tl.to(under, { opacity: 0, scale: 0.8, y: "+=10", duration: 0.35, stagger: 0.04, ease: "power2.in" }, 4.3)
+      .to(shaft, { strokeDashoffset: len, duration: 0.45, ease: "power2.in" }, 4.35)
+      .to(tip, { strokeDashoffset: 20, duration: 0.2, ease: "power2.in" }, 4.65)
+      .to(handleSvg, { opacity: 0, duration: 0.25 }, 4.75)
+      .to(roof, { morphSVG: home, duration: 0.9, ease: "power3.inOut" }, 4.7);
   },
 
   "business-insurance": (tl, q, g, w) => {
@@ -847,44 +882,61 @@ const builds: Record<string, Build> = {
   bundle: (tl, q, g, w) => {
     const roof = q(".__roof")[0] as SVGPathElement;
     const home = roof.getAttribute("d")!;
-    const icons = q(".s-parade");
+    const all = q(".s-parade") as HTMLElement[];
+    // A different mix each time: you choose, one by one.
+    const mix = MIXES[mixTurn++ % MIXES.length].map((slug) => allProducts.findIndex((p) => p.slug === slug));
+    // on a phone six choices fit the roof, so show the three picks among three others
+    const others = all.map((_, i) => i).filter((i) => !mix.includes(i));
+    const keep = g.mobile ? [...mix, ...others.slice(0, 3)].sort((a, b) => a - b) : all.map((_, i) => i);
+    const icons = keep.map((i) => all[i]);
+    all.forEach((el, i) => !keep.includes(i) && gsap.set(el, { opacity: 0 }));
     const n = icons.length;
-    const size = (icons[0] as HTMLElement).offsetWidth;
+    const size = icons[0].offsetWidth;
 
-    // Landing spots follow the lifted roof, tucked just beneath it.
-    const spots = icons.map((_, i) => {
+    // Every cover on offer, in a row under the lifted roof.
+    const row = icons.map((_, i) => {
       const ux = 205 + (390 * i) / (n - 1);
       const pt = g.toPx(ux, pathYAt(LIFTED_D, ux));
       return { x: pt.x - size / 2, y: pt.y + size * 0.3 };
     });
-    icons.forEach((el, i) => {
-      const ang = (i / n) * Math.PI * 2 + 0.6;
-      gsap.set(el, {
-        x: spots[i].x + Math.cos(ang) * g.W * 0.6,
-        y: spots[i].y - Math.abs(Math.sin(ang)) * g.H * 0.9 - 40,
-        rotation: gsap.utils.random(-160, 160),
-        scale: 0.6,
-        opacity: 0,
-      });
-    });
+    icons.forEach((el, i) => gsap.set(el, { x: row[i].x, y: row[i].y + 14, scale: 0.9, opacity: 0 }));
+    gsap.set(q(".s-check"), { scale: 0, opacity: 0 });
 
     tl.to(roof, { morphSVG: LIFTED_D, duration: 0.8, ease: "power3.inOut" }, 0.05);
-    icons.forEach((el, i) => {
-      const t = 0.45 + i * 0.07;
-      tl.to(el, { opacity: 1, duration: 0.2 }, t).to(el, { x: spots[i].x, y: spots[i].y, rotation: 0, scale: 1, duration: 0.75, ease: "back.out(1.5)" }, t);
+    icons.forEach((el, i) => tl.to(el, { opacity: 0.45, y: row[i].y, duration: 0.4, ease: "power2.out" }, 0.35 + i * 0.035));
+
+    const picked = mix.map((i) => all[i]);
+    picked.forEach((el, k) => {
+      const at = 1.15 + k * 0.42;
+      tl.to(el, { opacity: 1, scale: 1.14, duration: 0.18, ease: "power2.out" }, at)
+        .to(el, { scale: 1, duration: 0.35, ease: "back.out(2.5)" }, at + 0.18)
+        .to(el.querySelector(".s-check"), { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(3)" }, at + 0.08);
     });
-    // Everyone is in: the roof settles over them and the words dance.
-    const settled = 0.45 + n * 0.07 + 0.65;
-    tl.to(roof, { morphSVG: "M6 112 C 150 84, 300 -24, 400 -56 C 500 -24, 650 84, 794 112", duration: 0.35, ease: "power2.out" }, settled)
-      .to(icons, { y: "+=5", duration: 0.35, ease: "power2.out" }, settled)
-      .to(icons, { y: "-=5", duration: 0.5, ease: "elastic.out(1, 0.5)" }, settled + 0.35);
-    beat(tl, w, settled + 0.2, -8);
-    tl.to(icons, { opacity: 0, y: "+=18", scale: 0.8, duration: 0.45, stagger: { each: 0.03, from: "edges" }, ease: "power2.in" }, settled + 1.3)
-      .to(roof, { morphSVG: home, duration: 0.85, ease: "power3.inOut" }, settled + 1.55);
+
+    // The rest step aside; your picks come together under one roof.
+    const rest = icons.filter((el) => !picked.includes(el));
+    tl.to(rest, { opacity: 0, y: "+=12", scale: 0.8, duration: 0.35, stagger: { each: 0.02, from: "edges" }, ease: "power2.in" }, 2.55);
+    const gap = Math.max(70, ((size * 1.45) / g.roofW) * 800);
+    picked.forEach((el, k) => {
+      const ux = 400 + (k - 1) * gap;
+      const pt = g.toPx(ux, pathYAt(SETTLED_D, ux));
+      tl.to(el, { x: pt.x - size / 2, y: pt.y + size * 0.3, duration: 0.65, ease: "power3.inOut" }, 2.75 + k * 0.04);
+    });
+    tl.to(roof, { morphSVG: SETTLED_D, duration: 0.5, ease: "power2.out" }, 2.95)
+      .to(picked, { y: "+=5", duration: 0.3, ease: "power2.out" }, 3.4)
+      .to(picked, { y: "-=5", duration: 0.5, ease: "elastic.out(1, 0.5)" }, 3.7);
+    beat(tl, w, 3.45, -8);
+    tl.to(picked, { opacity: 0, y: "+=18", scale: 0.8, duration: 0.45, stagger: 0.05, ease: "power2.in" }, 4.7)
+      .to(roof, { morphSVG: home, duration: 0.85, ease: "power3.inOut" }, 4.95);
   },
 };
 
 const iconClass = "size-8 sm:size-11 text-ink";
+/**
+ * Every policy an umbrella sits over. Umbrella insurance is extra liability on top of the liability in these
+ * (a commercial umbrella for business). It does not cover life, health, pet or flood, so those stay out.
+ */
+const UNDER_UMBRELLA = ["auto-insurance", "homeowners-insurance", "renters-insurance", "condo-insurance", "boat-insurance", "business-insurance"];
 
 function Markup({ kind }: { kind: string }) {
   const road = (
@@ -1033,8 +1085,26 @@ function Markup({ kind }: { kind: string }) {
     case "umbrella-insurance":
       return (
         <>
-          {Array.from({ length: 44 }, (_, i) => (
-            <span key={i} className="sc s-drop absolute top-0 left-0 z-20 h-7 w-[2px] origin-bottom rounded-full bg-gradient-to-b from-teal/0 to-teal" />
+          {UNDER_UMBRELLA.map((slug) => {
+            const Icon = coverIcons[slug];
+            return (
+              <span
+                key={slug}
+                className="sc s-under absolute top-0 left-0 z-20 grid size-6 place-items-center rounded-lg sm:rounded-xl bg-white shadow-[0_8px_18px_-10px_rgb(10_34_41/0.45)] ring-1 ring-ink/8 sm:size-10"
+                style={{ opacity: 0 }}
+              >
+                <Icon className="size-3.5 text-ink sm:size-5" strokeWidth={1.75} />
+              </span>
+            );
+          })}
+          {[Gavel, Banknote, Gavel].map((Icon, i) => (
+            <span
+              key={i}
+              className="sc s-hit absolute top-0 left-0 z-30 grid size-7 place-items-center rounded-full bg-white text-red shadow-[0_8px_18px_-10px_rgb(10_34_41/0.45)] ring-1 ring-red/30 sm:size-10"
+              style={{ opacity: 0 }}
+            >
+              <Icon className="size-3.5 sm:size-5" strokeWidth={1.75} />
+            </span>
           ))}
           <svg className="sc s-handle absolute inset-0 z-20 h-full w-full overflow-visible" fill="none">
             <path className="s-tip [stroke-width:var(--roof-w)]" stroke="#d0142c" strokeLinecap="round" />
@@ -1084,9 +1154,13 @@ function Markup({ kind }: { kind: string }) {
             return (
               <span
                 key={p.slug}
-                className="sc s-parade absolute top-0 left-0 z-20 grid size-8 place-items-center rounded-xl bg-white shadow-[0_8px_18px_-10px_rgb(10_34_41/0.45)] ring-1 ring-ink/8 sm:size-10"
+                className="sc s-parade absolute top-0 left-0 z-20 grid size-6 place-items-center rounded-lg sm:rounded-xl bg-white shadow-[0_8px_18px_-10px_rgb(10_34_41/0.45)] ring-1 ring-ink/8 sm:size-10"
+                style={{ opacity: 0 }}
               >
-                <Icon className="size-4 text-ink sm:size-5" strokeWidth={1.75} />
+                <Icon className="size-3.5 text-ink sm:size-5" strokeWidth={1.75} />
+                <span className="s-check absolute -top-1.5 -right-1.5 grid size-4 place-items-center rounded-full bg-teal text-white ring-2 ring-white max-sm:-top-1 max-sm:-right-1 max-sm:size-3.5">
+                  <Check className="size-2 sm:size-3" strokeWidth={3} />
+                </span>
               </span>
             );
           })}
@@ -1104,7 +1178,8 @@ export default function HeroScene({ kind, delay = 0 }: { kind: string; delay?: n
   useGSAP(
     () => {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        gsap.set(root.current!.querySelectorAll(".sc"), { opacity: 0 });
+        const pieces = root.current!.querySelectorAll(".sc");
+        if (pieces.length) gsap.set(pieces, { opacity: 0 });
         return;
       }
       const build = builds[kind];
@@ -1114,7 +1189,9 @@ export default function HeroScene({ kind, delay = 0 }: { kind: string; delay?: n
       const local = gsap.utils.selector(root);
       const q = ((sel: string) => (sel === ".__roof" ? (roofPath ? [roofPath] : []) : local(sel))) as unknown as Q;
       const morphs = ["health-insurance", "umbrella-insurance", "homeowners-insurance", "bundle", "pet-insurance", "auto-insurance", "boat-insurance", "renters-insurance", "condo-insurance", "business-insurance"].includes(kind);
-      gsap.set(q(".sc"), { opacity: 1 });
+      // not every cover has extra pieces (some only reshape the roof); GSAP warns on an empty target
+      const pieces = q(".sc");
+      if (pieces.length) gsap.set(pieces, { opacity: 1 });
       const stage = root.current!.parentElement!;
       const sr = stage.getBoundingClientRect();
       const els = Array.from(stage.querySelectorAll<HTMLElement>(".cha-hop"));

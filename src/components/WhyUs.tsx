@@ -5,6 +5,7 @@ import { Headset, Lightbulb, Scale, Sparkles, type LucideIcon } from "lucide-rea
 import { reasons } from "@/lib/content";
 import ImageSlot from "./ImageSlot";
 import { RevealText } from "./motion";
+import { Brand } from "./Brand";
 
 const icons: LucideIcon[] = [Headset, Lightbulb, Scale, Sparkles];
 
@@ -35,7 +36,7 @@ export default function WhyUs() {
     <section aria-labelledby="why-title" className="py-28 sm:py-36 lg:py-44">
       <div className="wrap">
         <div className="max-w-3xl">
-          <p className="text-base font-semibold text-teal">Why ChaCha</p>
+          <p className="text-base font-semibold text-teal">Why <Brand /></p>
           <RevealText id="why-title" className="font-display mt-5 text-[clamp(2.25rem,4.2vw,3.75rem)] leading-[1.04] font-semibold tracking-[-0.035em]">
             Four good reasons to let us do the shopping.
           </RevealText>

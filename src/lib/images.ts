@@ -85,7 +85,7 @@ export const images = {
     ratio: "4/5",
     ready: true,
     alt: "A single red umbrella in the rain",
-    prompt: `A single crimson red umbrella held over a person walking through light rain on a clean modern plaza, overhead angle. ${STYLE}`,
+    prompt: `A modern family home with a car and a small boat on a trailer in the driveway, a couple standing on the front lawn under one large open crimson red umbrella on a clear sunny day, wide shot so the house, car and boat all sit behind them. ${STYLE}`,
   },
   business: {
     file: "cover-business.jpg",

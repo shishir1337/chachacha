@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { INTRO_DELAY } from "./motion";
 import HeroScene from "./HeroScene";
+import { DANCE, roofie } from "./Mascot";
 
 const WORDS = ["Cha", "Cha", "Cha."];
 const BASE_W = 112;
@@ -29,6 +30,7 @@ function roofPath(px: number, py: number) {
  * The roof from the logo follows the pointer and settles over whatever it is near,
  * the nearest word stretches and lifts, and a tap makes a word hop.
  * When nobody is interacting the three words keep a quiet one-two-three beat.
+ * Tapping the words starts a cha-cha-cha: the uncle dances the basic and each word hops on its "cha".
  */
 export default function ChaStage({ scene, sceneKey }: { scene: string | null; sceneKey: number }) {
   const stage = useRef<HTMLDivElement>(null);
@@ -39,6 +41,9 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
   const roofKick = useRef<{ px?: number; vy: number }>({ vy: 0 });
   // Hold the idle beat while a picked-cover scene is playing.
   const quietUntil = useRef(0);
+  const danceUntil = useRef(0);
+  const danceTimers = useRef<number[]>([]);
+  useEffect(() => () => danceTimers.current.forEach(clearTimeout), []);
   useEffect(() => {
     if (sceneKey > 0) quietUntil.current = performance.now() + 5500;
   }, [sceneKey]);
@@ -183,6 +188,32 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
     };
   }, []);
 
+  // "2, 3, cha-cha-1": the words take the cha-cha-cha, left to right, then right to left on the way back.
+  function dance(i: number) {
+    hop(i);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const now = performance.now();
+    if (now < danceUntil.current) return;
+    const { start, beat } = DANCE;
+    danceUntil.current = now + (start + 8 * beat + 1.2) * 1000;
+    quietUntil.current = danceUntil.current;
+    const words = () => {
+      danceUntil.current = performance.now() + (start + 8 * beat + 1.2) * 1000;
+      quietUntil.current = danceUntil.current;
+      const at = (count: number, fn: () => void) => danceTimers.current.push(window.setTimeout(fn, (start + count * beat) * 1000));
+      [0, 1, 2].forEach((w, k) => at(2 + k * 0.5, () => hop(w)));
+      [2, 1, 0].forEach((w, k) => at(6 + k * 0.5, () => hop(w)));
+      at(8, () => [0, 1, 2].forEach((w) => hop(w)));
+    };
+    // In step with the uncle: he may still be landing, so the words start when he does.
+    // If he has been hidden, the words dance on their own.
+    if (document.querySelector("[data-roofie]")) {
+      window.addEventListener("roofie:dancing", words, { once: true });
+      danceTimers.current.push(window.setTimeout(() => window.removeEventListener("roofie:dancing", words), 6000));
+      roofie("dance");
+    } else words();
+  }
+
   function hop(i: number) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const el = hops.current[i];
@@ -226,7 +257,7 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
           className="[stroke-width:var(--roof-w)]"
         />
       </svg>
-      <p className="font-display relative z-10 -mx-[0.06em] flex items-baseline gap-x-[0.16em] overflow-hidden px-[0.06em] pt-[0.12em] pb-[0.04em] text-[min(13vw,17vh,11rem)] xl:text-[min(13vw,17vh,11rem,calc((min(100vw,88rem)_-_24.75rem)/6.75))] leading-[0.9] font-bold tracking-[-0.045em] text-red">
+      <p className="font-brush relative z-10 -mx-[0.06em] flex items-baseline gap-x-[0.16em] overflow-hidden px-[0.06em] pt-[0.12em] pb-[0.04em] text-[min(17vw,20vh,14.25rem)] xl:text-[min(17vw,20vh,14.25rem,calc((min(100vw,88rem)_-_24.75rem)/5.2))] leading-[0.9] font-normal text-red">
         {WORDS.map((word, i) => (
           <span
             key={i}
@@ -236,7 +267,7 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
               ref={(el) => {
                 hops.current[i] = el;
               }}
-              onPointerDown={() => hop(i)}
+              onPointerDown={() => dance(i)}
               className="cha-hop inline-block origin-bottom cursor-pointer"
             >
               <span
@@ -244,7 +275,6 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
                   inners.current[i] = el;
                 }}
                 className="inline-block origin-bottom will-change-transform"
-                style={{ fontVariationSettings: `"wdth" ${BASE_W}, "wght" 760` }}
               >
                 {word}
               </span>

@@ -13,7 +13,7 @@ const options = [
   {
     value: "bundle",
     label: "Bundle",
-    blurb: "Tell us everything you want covered. We price it together and look for multi-policy discounts.",
+    blurb: "Pick only the covers you want. We price them together and look for multi-policy discounts.",
     Icon: Layers,
   },
 ];

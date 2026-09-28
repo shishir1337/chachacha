@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { categories, contact } from "@/lib/content";
 import SketchMark from "./SketchMark";
+import { Brand } from "./Brand";
 
 const company = [
   { label: "About us", href: "/about-us" },
@@ -42,7 +43,7 @@ export default function Footer() {
           <div>
             <Image src="/chacha-logo-full.png" alt="ChaCha Insurance" width={788} height={316} className="h-16 w-auto" />
             <p className="mt-6 max-w-sm text-slate">
-              ChaCha Insurance is an independent agency. We shop multiple insurance companies to find individuals, families and
+              <Brand /> Insurance is an independent agency. We shop multiple insurance companies to find individuals, families and
               businesses affordable, reliable coverage, then help you pick the policy that actually fits.
             </p>
             <div className="mt-8 space-y-1">

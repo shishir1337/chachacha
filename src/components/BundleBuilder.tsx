@@ -88,17 +88,17 @@ export default function BundleBuilder() {
         <div className="mx-auto max-w-2xl text-center">
           <p className="inline-flex items-center gap-3 text-base font-semibold text-teal">
             <Roof className="h-4 w-10 text-red" />
-            One agent, every policy
+            Pick your mix
           </p>
           <RevealText
             id="bundle-title"
             className="font-display mt-5 text-[clamp(2.25rem,4.2vw,3.75rem)] leading-[1.04] font-semibold tracking-[-0.035em]"
           >
-            Everything you care about, under one roof.
+            Choose the covers you need. We bundle them.
           </RevealText>
           <p className="mt-6 text-lg text-slate">
-            Tap what you want covered and watch the roof stretch to fit. One agent looks after all of it, and putting
-            policies together often unlocks multi-policy discounts.
+            Tap only the covers you want and watch the roof stretch to fit them. Each one stays its own policy, and
+            putting two or more together often unlocks a multi-policy discount.
           </p>
         </div>
 

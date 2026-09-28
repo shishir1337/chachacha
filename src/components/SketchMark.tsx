@@ -74,7 +74,13 @@ function Napper() {
 }
 
 /**
- * The footer wordmark: "ChaCha Insurance" in the site face, in soft, quiet tones.
+ * The brush face sits high on its line: drop "ChaCha" by this much (svg units, text at 200) so its
+ * baseline lines up with "INSURANCE". Measured: both words then share the same top and baseline.
+ */
+export const BRUSH_DROP = 41;
+
+/**
+ * The footer wordmark: "ChaCha" in the brand's brush face and "INSURANCE" in the site face, in soft, quiet tones.
  * When the uncle reaches the footer he curls up for a nap inside the first "C".
  */
 export default function SketchMark() {
@@ -98,7 +104,7 @@ export default function SketchMark() {
       const innerW = c.width - stroke;
       const s = (innerW * 1.02) / 140;
       // bottom-left of the bowl's inside: just inside the left stem, resting on the lower stroke
-      setBowl({ x: c.x + stroke * 0.9, y: 200 - stroke * 0.84 - 84 * s, s });
+      setBowl({ x: c.x + stroke * 0.9, y: 200 + BRUSH_DROP - stroke * 0.84 - 84 * s, s });
     });
     return () => {
       off = true;
@@ -130,8 +136,13 @@ export default function SketchMark() {
           fontSize="200"
           style={{ fontFamily: "var(--font-mona), system-ui, sans-serif", fontWeight: 800, letterSpacing: "-0.045em" }}
         >
-          <tspan fill="rgb(208 20 44 / 0.2)">ChaCha</tspan>
-          <tspan fill="rgb(29 26 32 / 0.09)"> Insurance</tspan>
+          <tspan fill="rgb(208 20 44 / 0.2)" style={{ fontFamily: "var(--font-brush)", fontWeight: 400, letterSpacing: 0 }} fontSize="236" dy={BRUSH_DROP}>
+            ChaCha
+          </tspan>
+          <tspan fill="rgb(29 26 32 / 0.09)" dy={-BRUSH_DROP}>
+            {" "}
+            INSURANCE
+          </tspan>
         </text>
       </g>
 

@@ -17,6 +17,7 @@
 
   --font-display: var(--font-mona);
   --font-sans: var(--font-hanken);
+  --font-brush: var(--font-haydon), cursive;
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-dance: cubic-bezier(0.65, 0, 0.35, 1);

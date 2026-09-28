@@ -6,6 +6,7 @@ import { motion, useInView } from "motion/react";
 import { Check, Minus } from "lucide-react";
 import { compareRows } from "@/lib/content";
 import { roofie } from "./Mascot";
+import { Brand } from "./Brand";
 
 type Side = "captive" | "chacha";
 
@@ -77,7 +78,7 @@ export default function Compare() {
                     transition={{ type: "spring", stiffness: 380, damping: 32 }}
                   />
                 )}
-                <span className="relative">{label}</span>
+                <span className="relative">{value === "chacha" ? <Brand>{label}</Brand> : label}</span>
               </button>
             ))}
           </div>

@@ -6,6 +6,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { steps } from "@/lib/content";
 import { Button } from "./ui";
+import { Brand } from "./Brand";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -69,7 +70,7 @@ export default function Process() {
       >
         <div className="flex max-w-xl flex-col justify-between gap-10 pb-10 lg:w-[34rem] lg:shrink-0 lg:pr-16 lg:pb-0">
           <div>
-            <p className="text-base font-semibold text-seaglass">How ChaCha works</p>
+            <p className="text-base font-semibold text-seaglass">How <Brand /> works</p>
             <h2 id="process-title" className="font-display mt-5 text-[clamp(2.25rem,4.2vw,3.75rem)] leading-[1.04] font-semibold tracking-[-0.035em]">
               Four steps. One easy rhythm.
             </h2>
