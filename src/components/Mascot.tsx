@@ -7,7 +7,7 @@ import { X } from "lucide-react";
 import { contact } from "@/lib/content";
 import { coverIcons } from "@/lib/icons";
 import { INTRO_DELAY } from "./motion";
-import { BRUSH_DROP } from "./SketchMark";
+import { BRUSH_DROP, NAP_STEP } from "./SketchMark";
 
 /** Other parts of the page talk to the uncle with small window events. */
 /**
@@ -78,16 +78,16 @@ function obstacles(scope: Element, skip: Element): Box[] {
 // SVG y (of 160) that rests on the spot, per pose: feet or seat.
 const REST: Record<Pose, number> = { stand: 154, sit: 123 };
 
-/** The floor of the bowl of the first "C" in the footer wordmark. */
+/** The floor of the bowl of the first "C" in the footer wordmark: where he lies down to nap. */
 function insideTheC(_: DOMRect, el: Element): Pt | null {
   const text = el.querySelector("text");
   if (!text) return null;
   const box = text.getExtentOfChar(0);
   const m = text.getScreenCTM();
   if (!m) return null;
-  const em = 200 * m.a;
-  const baseline = (200 + BRUSH_DROP) * m.d + m.f;
-  return { x: (box.x + box.width * 0.5) * m.a + m.e, y: baseline - em * 0.14 };
+  const x = box.x + NAP_STEP.x * NAP_STEP.k;
+  const y = 200 + BRUSH_DROP + NAP_STEP.y * NAP_STEP.k;
+  return { x: x * m.a + m.e, y: y * m.d + m.f };
 }
 
 const STATIONS: Station[] = [

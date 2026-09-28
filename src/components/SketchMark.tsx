@@ -18,7 +18,7 @@ const C = {
 
 /**
  * The uncle, curled up asleep in the bowl of a "C" like a hammock.
- * Drawn in a 140 x 84 box; (0, 84) is the bottom-left where the bowl's inner wall meets its floor.
+ * Drawn in a 140 x 84 box, placed by its bottom-left corner (0, 84).
  * His head rests against the left wall, his back follows the curve, knees up, feet over the lip.
  */
 function Napper() {
@@ -78,6 +78,18 @@ function Napper() {
  * baseline lines up with "INSURANCE". Measured: both words then share the same top and baseline.
  */
 export const BRUSH_DROP = 41;
+/** Size of the brush "ChaCha" (the rest of the wordmark is set at 200). */
+const BRUSH_SIZE = 236;
+
+/*
+ * Where he sleeps in the brush "C", in the letter's own units (1000 per em, from its pen position on the baseline).
+ * Its inside bottom is a crescent: the wall on the left, a dip, then the tip of the lower stroke on the right.
+ * He lies along it: head against the wall, seat in the dip, feet resting on the tip.
+ * Found by measuring the glyph and checking the drawing against it; x/y are the drawing's bottom-left corner.
+ */
+const NAP = { x: 78, y: -196, rot: -6, s: 2.5 };
+/** The spot on that crescent where the walking uncle steps in before he lies down. */
+export const NAP_STEP = { x: 190, y: -190, k: BRUSH_SIZE / 1000 };
 
 /**
  * The footer wordmark: "ChaCha" in the brand's brush face and "INSURANCE" in the site face, in soft, quiet tones.
@@ -88,7 +100,7 @@ export default function SketchMark() {
   const text = useRef<SVGTextElement>(null);
   const inView = useInView(svg, { once: true, amount: 0.4 });
   const [box, setBox] = useState("0 0 1200 260");
-  const [bowl, setBowl] = useState<{ x: number; y: number; s: number } | null>(null);
+  const [bowl, setBowl] = useState<{ x: number; y: number; s: number; rot: number } | null>(null);
   const [napping, setNapping] = useState(false);
 
   // Fit the viewBox to the real text once the fonts are in, and find the bowl of the first "C".
@@ -99,12 +111,10 @@ export default function SketchMark() {
       if (!g || off || !text.current) return;
       const b = g.getBBox();
       setBox(`${b.x - 12} ${b.y - 12} ${b.width + 24} ${b.height + 24}`);
+      // the pen position of the first letter; NAP is measured from there, in the letter's units
       const c = text.current.getExtentOfChar(0);
-      const stroke = 200 * 0.165; // Mona Sans ExtraBold stem, in em units of this 200px text
-      const innerW = c.width - stroke;
-      const s = (innerW * 1.02) / 140;
-      // bottom-left of the bowl's inside: just inside the left stem, resting on the lower stroke
-      setBowl({ x: c.x + stroke * 0.9, y: 200 + BRUSH_DROP - stroke * 0.84 - 84 * s, s });
+      const k = BRUSH_SIZE / 1000;
+      setBowl({ x: c.x + NAP.x * k, y: 200 + BRUSH_DROP + NAP.y * k, s: NAP.s * k, rot: NAP.rot });
     });
     return () => {
       off = true;
@@ -136,7 +146,7 @@ export default function SketchMark() {
           fontSize="200"
           style={{ fontFamily: "var(--font-mona), system-ui, sans-serif", fontWeight: 800, letterSpacing: "-0.045em" }}
         >
-          <tspan fill="rgb(208 20 44 / 0.2)" style={{ fontFamily: "var(--font-brush)", fontWeight: 400, letterSpacing: 0 }} fontSize="236" dy={BRUSH_DROP}>
+          <tspan fill="rgb(208 20 44 / 0.2)" style={{ fontFamily: "var(--font-brush)", fontWeight: 400, letterSpacing: 0 }} fontSize={BRUSH_SIZE} dy={BRUSH_DROP}>
             ChaCha
           </tspan>
           <tspan fill="rgb(29 26 32 / 0.09)" dy={-BRUSH_DROP}>
@@ -156,7 +166,7 @@ export default function SketchMark() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
-            <g transform={`translate(${bowl.x} ${bowl.y}) scale(${bowl.s})`}>
+            <g transform={`translate(${bowl.x} ${bowl.y}) rotate(${bowl.rot}) scale(${bowl.s}) translate(0 -84)`}>
               {/* slow breathing */}
               <motion.g
                 animate={{ scaleY: [1, 1.03, 1] }}

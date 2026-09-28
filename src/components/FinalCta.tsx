@@ -65,7 +65,7 @@ export default function FinalCta() {
               <div>
                 <h2 id="cta-title" className="font-display text-[clamp(2.75rem,6.5vw,6rem)] leading-[0.98] font-semibold tracking-[-0.04em]">
                   <span className="cta-word block">
-                    Let <Brand size={1.18} />
+                    Let <Brand />
                   </span>{" "}
                   <span className="cta-word block">do the</span>{" "}
                   <span className="cta-word block">shopping.</span>
