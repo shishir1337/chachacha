@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
-import { Banknote, Check, Gavel, Heart, LampFloor } from "lucide-react";
+import { Banknote, Check, Flame, Gavel, Heart, LampFloor } from "lucide-react";
 import { allProducts } from "@/lib/content";
 import { coverIcons } from "@/lib/icons";
 
@@ -38,9 +38,29 @@ function ecgPath(t: number, amp: number) {
   return d;
 }
 
-/** An umbrella canopy: a dome with a scalloped rim. */
-const CANOPY_D =
-  "M150 92 C 170 10, 290 -58, 400 -58 C 510 -58, 630 10, 650 92 Q 612 66, 575 92 Q 537 66, 500 92 Q 462 66, 425 92 Q 400 74, 375 92 Q 337 66, 300 92 Q 262 66, 225 92 Q 187 66, 150 92";
+/** Ten panels along the rim of the umbrella canopy (one per cover), in roof units. */
+const PANELS = 10;
+const RIM_L = 92;
+const RIM_R = 708;
+const DOME_TOP = -74;
+/** Height of the open canopy (roof units) at x: where things land on it. */
+const umbrellaY = (x: number) => {
+  const t = (x - 400) / (RIM_R - 400);
+  return Math.abs(t) >= 1 ? 92 : 92 - (92 - DOME_TOP) * Math.sqrt(1 - t * t);
+};
+const rimX = (i: number) => RIM_L + ((RIM_R - RIM_L) * i) / PANELS;
+const scallops = (x0: number, x1: number, dip: number) =>
+  Array.from({ length: PANELS }, (_, k) => {
+    const i = PANELS - 1 - k;
+    const a = x0 + ((x1 - x0) * i) / PANELS;
+    const b = x0 + ((x1 - x0) * (i + 1)) / PANELS;
+    return `Q ${((a + b) / 2).toFixed(1)} ${dip}, ${a.toFixed(1)} 92`;
+  }).join(" ");
+/** The open umbrella: the dome, then ten scallops back along the rim. */
+const UMBRELLA_OPEN_D = `M${RIM_L} 92 C 110 -12, 250 ${DOME_TOP}, 400 ${DOME_TOP} C 550 ${DOME_TOP}, 690 -12, ${RIM_R} 92 ${scallops(RIM_L, RIM_R, 72)}`;
+/** The same umbrella folded shut: a slim spike (same commands, so it morphs cleanly). */
+const UMBRELLA_SHUT_D = `M392 92 C 393 20, 397 ${DOME_TOP}, 400 ${DOME_TOP} C 403 ${DOME_TOP}, 407 20, 408 92 ${scallops(392, 408, 88)}`;
+
 /** The roof lifted high, to make room for everything moving in underneath. */
 const LIFTED_D = "M6 112 C 150 78, 300 -40, 400 -74 C 500 -40, 650 78, 794 112";
 
@@ -231,12 +251,6 @@ function sofaPath(g: G, cx: number, top: number, SW: number, SH: number) {
     `L${u(X(0.5), Y(0.12))}`,
   ].join(" ");
 }
-
-/** Height of the canopy (in roof units) at x, for things to land on. */
-const canopyY = (x: number) => {
-  const t = (x - 400) / 250;
-  return Math.abs(t) >= 1 ? 92 : 92 - 150 * Math.sqrt(1 - t * t);
-};
 
 /** Where the roof sits inside the stage, in pixels. Mirrors ChaStage's roof classes. */
 function geometry(root: HTMLElement) {
@@ -748,72 +762,133 @@ const builds: Record<string, Build> = {
     const roof = q(".__roof")[0] as SVGPathElement;
     const roofSvg = roof.ownerSVGElement!;
     const home = roof.getAttribute("d")!;
+    const px = (x: number, y: number) => g.toPx(x, y);
+    const P = (x: number, y: number) => {
+      const p = px(x, y);
+      return `${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+    };
 
-    // The handle is drawn in true pixels so its hook stays round.
-    const handleSvg = q(".s-handle")[0] as SVGSVGElement;
-    handleSvg.setAttribute("viewBox", `0 0 ${g.W} ${g.H}`);
-    const top = g.toPx(400, -58);
-    const rim = g.toPx(400, 92);
-    const r = Math.max(6, g.H * 0.03);
+    // Ribs, panels and handle are drawn in true pixels, over the stage.
+    const art = q(".s-handle")[0] as SVGSVGElement;
+    art.setAttribute("viewBox", `0 0 ${g.W} ${g.H}`);
+    const top = px(400, DOME_TOP);
+    const rimMid = px(400, 92);
+    const hr = Math.max(6, g.H * 0.03);
     const drop = Math.max(14, g.H * 0.07);
     const shaft = q(".s-shaft")[0] as SVGPathElement;
     const tip = q(".s-tip")[0] as SVGPathElement;
     shaft.setAttribute(
       "d",
-      `M${top.x} ${top.y} L${rim.x} ${rim.y + drop} A ${r} ${r} 0 0 1 ${rim.x - 2 * r} ${rim.y + drop} L${rim.x - 2 * r} ${rim.y + drop - r * 0.5}`,
+      `M${top.x} ${top.y} L${rimMid.x} ${rimMid.y + drop} A ${hr} ${hr} 0 0 1 ${rimMid.x - 2 * hr} ${rimMid.y + drop} L${rimMid.x - 2 * hr} ${rimMid.y + drop - hr * 0.5}`,
     );
     tip.setAttribute("d", `M${top.x} ${top.y} L${top.x} ${top.y - Math.max(8, g.H * 0.04)}`);
     const len = shaft.getTotalLength();
-    gsap.set(shaft, { strokeDasharray: len, strokeDashoffset: len });
-    gsap.set(tip, { strokeDasharray: 20, strokeDashoffset: 20 });
+    const tipLen = tip.getTotalLength();
+    // Round line caps still paint a dot at each end of a hidden dash, so every drawn-in piece
+    // also stays invisible until the moment it starts drawing.
+    gsap.set(shaft, { strokeDasharray: len, strokeDashoffset: len, opacity: 0 });
+    gsap.set(tip, { strokeDasharray: tipLen, strokeDashoffset: tipLen, opacity: 0 });
 
-    // Every policy the umbrella reaches over lines up first, three each side of the handle...
-    const under = q(".s-under") as HTMLElement[];
-    const size = under[0].offsetWidth;
-    const slots = [222, 276, 330, 470, 524, 578];
-    under.forEach((el, i) => {
-      const pt = g.toPx(slots[i], 92);
-      gsap.set(el, { x: pt.x - size / 2, y: pt.y - size * 1.08, opacity: 0, scale: 0.6 });
-      tl.to(el, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, 0.1 + i * 0.08);
+    // A rib from the tip down to each point of the rim, bowing out with the dome (seen from the front).
+    const ribCtrl = (i: number) => {
+      const x = rimX(i);
+      return [400 + (x - 400) * 1.02, DOME_TOP + (92 - DOME_TOP) * (0.22 + 0.18 * (Math.abs(x - 400) / (RIM_R - 400)))] as const;
+    };
+    const ribs = q(".s-rib") as SVGPathElement[];
+    ribs.forEach((rib, i) => {
+      const [cx, cy] = ribCtrl(i);
+      rib.setAttribute("d", `M${P(400, DOME_TOP)} Q ${P(cx, cy)} ${P(rimX(i), 92)}`);
+      const l = rib.getTotalLength();
+      gsap.set(rib, { strokeDasharray: l, strokeDashoffset: l, opacity: 0 });
+    });
+    // Ten panels, alternately tinted like a classic umbrella.
+    const panels = q(".s-panel") as SVGPathElement[];
+    panels.forEach((panel, i) => {
+      const [c0x, c0y] = ribCtrl(i);
+      const [c1x, c1y] = ribCtrl(i + 1);
+      const mid = (rimX(i) + rimX(i + 1)) / 2;
+      panel.setAttribute(
+        "d",
+        `M${P(400, DOME_TOP)} Q ${P(c0x, c0y)} ${P(rimX(i), 92)} Q ${P(mid, 72)} ${P(rimX(i + 1), 92)} Q ${P(c1x, c1y)} ${P(400, DOME_TOP)} Z`,
+      );
+      gsap.set(panel, { opacity: 0 });
     });
 
-    // ...then the umbrella opens over all of them: one extra layer on top.
-    tl.to(roof, { morphSVG: CANOPY_D, duration: 1, ease: "power3.inOut" }, 0.45)
-      .to(tip, { strokeDashoffset: 0, duration: 0.25, ease: "power2.out" }, 1.25)
-      .to(shaft, { strokeDashoffset: 0, duration: 0.7, ease: "power2.inOut" }, 1.3);
+    // Each cover is printed on its own panel, like the pattern on an umbrella's fabric:
+    // part way up the panel so the prints follow the dome, turned with the panel, and narrower
+    // towards the edges where the fabric curves away from you.
+    const covers = q(".s-under") as HTMLElement[];
+    const full = covers[0].offsetWidth;
+    const rimPanel = px(rimX(1), 92).x - px(rimX(0), 92).x;
+    covers.forEach((el, i) => {
+      const mid = (rimX(i) + rimX(i + 1)) / 2;
+      const u = (mid - 400) / (RIM_R - 400); // -1 (left edge) .. 1 (right edge)
+      const uy = 92 - (92 - umbrellaY(mid)) * 0.42;
+      const at = px(mid + (400 - mid) * 0.06, uy);
+      // the panel is narrower higher up (it tapers to the tip)
+      const along = (uy - DOME_TOP) / (92 - DOME_TOP);
+      const size = Math.min(full * 1.1, rimPanel * along * 0.78);
+      const k = size / full;
+      // foreshortening: the edges of the dome turn away from you, so the prints there are narrower
+      const kx = k * (0.55 + 0.45 * Math.sqrt(1 - Math.min(0.95, u * u)));
+      // starts small; the timeline grows it to (kx, k)
+      gsap.set(el, { x: at.x - full / 2, y: at.y - full / 2, opacity: 0, rotation: u * 26, scaleX: kx * 0.4, scaleY: k * 0.4 });
+      el.dataset.k = String(k);
+      el.dataset.kx = String(kx);
+    });
+    // 1. The roof folds shut into a closed umbrella...
+    tl.to(roof, { morphSVG: UMBRELLA_SHUT_D, duration: 0.45, ease: "power2.in" }, 0.05)
+      // the tip and handle grow out of the folded umbrella once it has closed
+      .set([tip, shaft], { opacity: 1 }, 0.47)
+      .to(tip, { strokeDashoffset: 0, duration: 0.18, ease: "power2.out" }, 0.47)
+      .to(shaft, { strokeDashoffset: 0, duration: 0.5, ease: "power2.inOut" }, 0.5)
+      // 2. ...and pops open, ribs shooting out from the tip
+      .to(roof, { morphSVG: UMBRELLA_OPEN_D, duration: 0.6, ease: "back.out(1.7)" }, 0.55)
+      .set(ribs, { opacity: 1 }, 0.6)
+      .to(ribs, { strokeDashoffset: 0, duration: 0.45, ease: "power2.out", stagger: { each: 0.02, from: "center" } }, 0.6)
+      .to(panels, { opacity: 1, duration: 0.45, stagger: { each: 0.03, from: "center" } }, 0.95);
+    // 3. Every cover is printed onto its panel, one after another, left to right
+    covers.forEach((el, i) => {
+      tl.to(el, { opacity: 1, scaleX: Number(el.dataset.kx), scaleY: Number(el.dataset.k), duration: 0.45, ease: "back.out(2.2)" }, 1.1 + i * 0.07);
+    });
 
-    // A lawsuit and a big bill come down and bounce off the canopy. The policies underneath stay put.
-    const sway = [roofSvg, handleSvg];
+    // 4. Life's surprises (a lawsuit, a fire, a big bill) drop onto the canopy and bounce away.
+    const sway = [roofSvg, art, q(".s-layer")[0] as HTMLElement];
     gsap.set(roofSvg, { svgOrigin: undefined, transformOrigin: `${top.x - g.roofLeft}px ${top.y - g.roofTop}px` });
-    gsap.set(handleSvg, { transformOrigin: `${top.x}px ${top.y}px` });
+    gsap.set(sway.slice(1), { transformOrigin: `${top.x}px ${top.y}px` });
     const hits = q(".s-hit") as HTMLElement[];
-    const lanes = [300, 505, 370];
+    const lanes = [280, 530, 360];
     hits.forEach((el, i) => {
       const ux = lanes[i];
       const dir = ux < 400 ? -1 : 1;
-      const land = g.toPx(ux, canopyY(ux));
+      const land = px(ux, umbrellaY(ux));
       const hs = el.offsetWidth;
-      const at = 2.0 + i * 0.55;
+      const at = 2.0 + i * 0.45;
       const hx = land.x - hs / 2;
       const hy = land.y - hs * 0.95;
       gsap.set(el, { x: hx, y: -g.H * 0.26, opacity: 0, rotation: dir * -12 });
       tl.to(el, { opacity: 1, duration: 0.15 }, at)
-        .to(el, { y: hy, duration: 0.5, ease: "power2.in" }, at)
-        // bounce away, off the side of the dome
-        .to(el, { x: hx + dir * g.W * 0.12, rotation: dir * 150, duration: 0.8, ease: "power1.out" }, at + 0.5)
-        .to(el, { keyframes: [{ y: hy - hs * 0.9, duration: 0.28, ease: "power2.out" }, { y: hy + hs * 2.6, duration: 0.52, ease: "power2.in" }] }, at + 0.5)
-        .to(el, { opacity: 0, duration: 0.3 }, at + 0.95)
-        // the canopy gives a little under the knock
-        .to(sway, { rotation: -dir * 2.2, duration: 0.12, ease: "power2.out" }, at + 0.5)
-        .to(sway, { rotation: 0, duration: 0.6, ease: "elastic.out(1, 0.45)" }, at + 0.62);
+        .to(el, { y: hy, duration: 0.45, ease: "power2.in" }, at)
+        .to(el, { x: hx + dir * g.W * 0.13, rotation: dir * 160, duration: 0.8, ease: "power1.out" }, at + 0.45)
+        .to(el, { keyframes: [{ y: hy - hs * 0.9, duration: 0.28, ease: "power2.out" }, { y: hy + hs * 2.6, duration: 0.52, ease: "power2.in" }] }, at + 0.45)
+        .to(el, { opacity: 0, duration: 0.3 }, at + 0.9)
+        .to(sway, { rotation: -dir * 2, duration: 0.12, ease: "power2.out" }, at + 0.45)
+        .to(sway, { rotation: 0, duration: 0.5, ease: "elastic.out(1, 0.45)" }, at + 0.57);
     });
-    // Everyone underneath is fine: a small, happy one-two-three.
-    beat(tl, w, 3.75, -6);
-    tl.to(under, { opacity: 0, scale: 0.8, y: "+=10", duration: 0.35, stagger: 0.04, ease: "power2.in" }, 4.3)
-      .to(shaft, { strokeDashoffset: len, duration: 0.45, ease: "power2.in" }, 4.35)
-      .to(tip, { strokeDashoffset: 20, duration: 0.2, ease: "power2.in" }, 4.65)
-      .to(handleSvg, { opacity: 0, duration: 0.25 }, 4.75)
-      .to(roof, { morphSVG: home, duration: 0.9, ease: "power3.inOut" }, 4.7);
+
+    // 5. Everyone underneath is fine: the umbrella twirls cha... cha... cha, with the words
+    tl.to(sway, { keyframes: [{ rotation: 7, duration: 0.2 }, { rotation: -7, duration: 0.25 }, { rotation: 4, duration: 0.2 }, { rotation: 0, duration: 0.35, ease: "back.out(2)" }], ease: "sine.inOut" }, 3.55);
+    beat(tl, w, 3.55, -8);
+
+    // 6. Fold it all away, back into the roof
+    tl.to(covers, { opacity: 0, duration: 0.25, stagger: { each: 0.02, from: "edges" }, ease: "power1.in" }, 4.55)
+      .to(panels, { opacity: 0, duration: 0.3 }, 4.6)
+      .to(ribs, { strokeDashoffset: (_: number, el: SVGPathElement) => el.getTotalLength(), duration: 0.35, ease: "power2.in" }, 4.65)
+      .to(roof, { morphSVG: UMBRELLA_SHUT_D, duration: 0.35, ease: "power2.in" }, 4.75)
+      .to(shaft, { strokeDashoffset: len, duration: 0.4, ease: "power2.in" }, 4.95)
+      .to(tip, { strokeDashoffset: tipLen, duration: 0.2, ease: "power2.in" }, 5.15)
+      .to(art, { opacity: 0, duration: 0.2 }, 5.25)
+      .to(roof, { morphSVG: home, duration: 0.7, ease: "power3.inOut" }, 5.15);
   },
 
   "business-insurance": (tl, q, g, w) => {
@@ -933,10 +1008,21 @@ const builds: Record<string, Build> = {
 
 const iconClass = "size-8 sm:size-11 text-ink";
 /**
- * Every policy an umbrella sits over. Umbrella insurance is extra liability on top of the liability in these
- * (a commercial umbrella for business). It does not cover life, health, pet or flood, so those stay out.
+ * Every cover under one umbrella (the agency's chosen message for this scene).
+ * Six on the bottom row, four above, stacked under the dome and clear of the handle.
  */
-const UNDER_UMBRELLA = ["auto-insurance", "homeowners-insurance", "renters-insurance", "condo-insurance", "boat-insurance", "business-insurance"];
+const UNDER_UMBRELLA = [
+  "auto-insurance",
+  "boat-insurance",
+  "homeowners-insurance",
+  "renters-insurance",
+  "condo-insurance",
+  "flood-insurance",
+  "life-insurance",
+  "health-insurance",
+  "pet-insurance",
+  "business-insurance",
+];
 
 function Markup({ kind }: { kind: string }) {
   const road = (
@@ -1085,19 +1171,29 @@ function Markup({ kind }: { kind: string }) {
     case "umbrella-insurance":
       return (
         <>
-          {UNDER_UMBRELLA.map((slug) => {
-            const Icon = coverIcons[slug];
-            return (
-              <span
-                key={slug}
-                className="sc s-under absolute top-0 left-0 z-20 grid size-6 place-items-center rounded-lg sm:rounded-xl bg-white shadow-[0_8px_18px_-10px_rgb(10_34_41/0.45)] ring-1 ring-ink/8 sm:size-10"
-                style={{ opacity: 0 }}
-              >
-                <Icon className="size-3.5 text-ink sm:size-5" strokeWidth={1.75} />
-              </span>
-            );
-          })}
-          {[Gavel, Banknote, Gavel].map((Icon, i) => (
+          <svg className="sc s-handle absolute inset-0 z-20 h-full w-full overflow-visible" fill="none">
+            {Array.from({ length: PANELS }, (_, i) => (
+              <path key={`p${i}`} className="s-panel" fill={i % 2 ? "rgb(255 255 255 / 0.85)" : "rgb(208 20 44 / 0.16)"} />
+            ))}
+            {Array.from({ length: PANELS + 1 }, (_, i) => (
+              <path key={`r${i}`} className="s-rib [stroke-width:calc(var(--roof-w)*0.4)]" stroke="#d0142c" strokeOpacity="0.55" strokeLinecap="butt" />
+            ))}
+            <path className="s-tip [stroke-width:var(--roof-w)]" stroke="#d0142c" strokeLinecap="round" />
+            <path className="s-shaft [stroke-width:calc(var(--roof-w)*0.8)]" stroke="#d0142c" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {/* the covers ride on the canopy, so they twirl with it */}
+          <div className="sc s-layer pointer-events-none absolute inset-0 z-20">
+            {UNDER_UMBRELLA.map((slug) => {
+              const Icon = coverIcons[slug];
+              return (
+                <span key={slug} className="s-under absolute top-0 left-0 grid size-6 place-items-center sm:size-10" style={{ opacity: 0 }}>
+                  {/* printed on the fabric: no badge, just the mark in the umbrella's red */}
+                  <Icon className="size-full text-red-deep" strokeWidth={1.6} />
+                </span>
+              );
+            })}
+          </div>
+          {[Gavel, Flame, Banknote].map((Icon, i) => (
             <span
               key={i}
               className="sc s-hit absolute top-0 left-0 z-30 grid size-7 place-items-center rounded-full bg-white text-red shadow-[0_8px_18px_-10px_rgb(10_34_41/0.45)] ring-1 ring-red/30 sm:size-10"
@@ -1106,15 +1202,6 @@ function Markup({ kind }: { kind: string }) {
               <Icon className="size-3.5 sm:size-5" strokeWidth={1.75} />
             </span>
           ))}
-          <svg className="sc s-handle absolute inset-0 z-20 h-full w-full overflow-visible" fill="none">
-            <path className="s-tip [stroke-width:var(--roof-w)]" stroke="#d0142c" strokeLinecap="round" />
-            <path
-              className="s-shaft [stroke-width:calc(var(--roof-w)*0.8)]"
-              stroke="#d0142c"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
         </>
       );
     case "business-insurance":
