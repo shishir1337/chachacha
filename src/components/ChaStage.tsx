@@ -189,11 +189,13 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
   }, []);
 
   // "2, 3, cha-cha-1": the words take the cha-cha-cha, left to right, then right to left on the way back.
+  // The cha-cha rhythm, in step with the uncle: two steady beats, then three quick ones.
+  // "Cha" on beat 1 (he rocks onto one foot), "Cha" on beat 2 (he shifts back), then "Cha." three times
+  // on his triple step: 1, 2, 3-3-3. Danced twice, once for each half of the basic step.
   function dance(i: number) {
-    hop(i);
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const now = performance.now();
-    if (now < danceUntil.current) return;
+    if (now < danceUntil.current) return hop(i);
     const { start, beat } = DANCE;
     danceUntil.current = now + (start + 8 * beat + 1.2) * 1000;
     quietUntil.current = danceUntil.current;
@@ -201,9 +203,11 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
       danceUntil.current = performance.now() + (start + 8 * beat + 1.2) * 1000;
       quietUntil.current = danceUntil.current;
       const at = (count: number, fn: () => void) => danceTimers.current.push(window.setTimeout(fn, (start + count * beat) * 1000));
-      [0, 1, 2].forEach((w, k) => at(2 + k * 0.5, () => hop(w)));
-      [2, 1, 0].forEach((w, k) => at(6 + k * 0.5, () => hop(w)));
-      at(8, () => [0, 1, 2].forEach((w) => hop(w)));
+      for (const half of [0, 4]) {
+        at(half, () => hop(0));
+        at(half + 1, () => hop(1));
+        [2, 2.5, 3].forEach((c) => at(half + c, () => hop(2, true)));
+      }
     };
     // In step with the uncle: he may still be landing, so the words start when he does.
     // If he has been hidden, the words dance on their own.
@@ -214,17 +218,25 @@ export default function ChaStage({ scene, sceneKey }: { scene: string | null; sc
     } else words();
   }
 
-  function hop(i: number) {
+  /** A word hops. `quick` is the short, snappy hop of the cha-cha-cha triple step. */
+  function hop(i: number, quick = false) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const el = hops.current[i];
     const inner = inners.current[i];
     if (!el || !inner) return;
     gsap.killTweensOf(el);
-    gsap
-      .timeline()
-      .to(el, { yPercent: -24, scaleY: 1.1, scaleX: 0.93, duration: 0.2, ease: "power2.out" })
-      .to(el, { yPercent: 0, scaleY: 0.88, scaleX: 1.1, duration: 0.16, ease: "power2.in" })
-      .to(el, { scaleY: 1, scaleX: 1, duration: 0.7, ease: "elastic.out(1, 0.35)" });
+    if (quick)
+      gsap
+        .timeline()
+        .to(el, { yPercent: -14, scaleY: 1.06, scaleX: 0.96, duration: 0.1, ease: "power2.out" })
+        .to(el, { yPercent: 0, scaleY: 0.93, scaleX: 1.05, duration: 0.09, ease: "power2.in" })
+        .to(el, { scaleY: 1, scaleX: 1, duration: 0.3, ease: "elastic.out(1, 0.4)" });
+    else
+      gsap
+        .timeline()
+        .to(el, { yPercent: -24, scaleY: 1.1, scaleX: 0.93, duration: 0.2, ease: "power2.out" })
+        .to(el, { yPercent: 0, scaleY: 0.88, scaleX: 1.1, duration: 0.16, ease: "power2.in" })
+        .to(el, { scaleY: 1, scaleX: 1, duration: 0.7, ease: "elastic.out(1, 0.35)" });
     
 
     // Pop the roof up over the word that hopped.
